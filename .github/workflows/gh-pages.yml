@@ -1,6 +1,7 @@
 on: push
 permissions:
   id-token: write
+  pages: write
 jobs:
   build-gh-pages:
     runs-on: ubuntu-latest
