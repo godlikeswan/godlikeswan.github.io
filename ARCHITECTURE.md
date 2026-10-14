@@ -5,10 +5,10 @@ lives**, how it is fetched, and how it is built.
 
 > **Status (2026-10-14).** The build, routing, and GitHub Pages deploy work, and
 > the shell is live. The data pipeline is **in progress**:
-> `scripts/refresh-projects.ts` now fetches the account profile (name, handle,
-> bio, avatar) into `src/generated/`. Repositories, groups, READMEs, and
-> `render-markdown.mjs` are still to come, so the app falls back to
-> `src/data/mock.ts` for everything else.
+> `scripts/refresh-projects.ts` fetches the profile, the repository list, and
+> each README into `src/generated/`. Groups are not read yet, so every project is
+> placed in one temporary "ungrouped" group, and READMEs are shown as plain text
+> until `render-markdown.mjs` exists.
 
 ## Principles
 
@@ -94,11 +94,11 @@ doubles as the GitHub profile text.
 refresh (network)  ->  render (offline)  ->  build
 ```
 
-- **refresh** (in progress) — `scripts/refresh-projects.ts` currently reads the
-  profile (name, handle, bio, avatar) and writes `src/generated/profile.json`
-  plus `public/generated/avatar-<hash>.<ext>`. The repositories, groups, and
-  READMEs follow the same shape (same account resolution, request helper, and
-  output dirs).
+- **refresh** (in progress) — `scripts/refresh-projects.ts` reads the profile,
+  the public repository list (paginated), and each repository's README. It writes
+  `src/generated/profile.json`, `projects.json`, and `groups.json`, plus the
+  avatar in `public/generated/`. Groups currently come from a single placeholder
+  "ungrouped" entry.
 - **render** (planned) — `scripts/render-markdown.mjs` turns the stored markdown
   into sanitized HTML, plus a heading list for the table of contents.
 - **build** — `vite build` bundles the site.
@@ -126,23 +126,26 @@ contrast, is imported by the seam and is safe (and smaller) bundled.
 
 ## Refresh script
 
-Status: the profile slice is implemented; the repository/group/README steps
-below are still to come.
+Status: the profile, repository list, and READMEs are implemented. Real groups
+and README image/link rewriting are still to come.
 
-Authenticates with a fine-grained token (public repositories, contents: read;
-stored as a CI secret, never in the browser), then:
+Authenticates with a fine-grained token (public repositories, read-only; stored
+as a CI secret, never in the browser), then:
 
 0. **[done]** resolve the account name (never hardcoded) and read the profile
    (`GET /users/<login>`), writing `profile.json` and downloading the avatar
-1. read the list of repositories (paginated, 100 per page)
-2. drop forks, archived repositories, and repositories without a README
+1. **[done]** read the list of repositories (paginated, 100 per page)
+2. **[done]** drop forks, archived repositories, and repositories without a
+   README; also skip the `<login>/<login>` profile repository
 3. read the group files from the profile repository
-4. read each repository's README; parse and strip the YAML frontmatter
+4. **[partial]** read each repository's README and strip the YAML frontmatter
+   (the fields are not parsed yet, so every project lands in "ungrouped")
 5. download the images each README references and rewrite the markdown to point
    at the local copies
 6. rewrite relative documentation links to GitHub blob URLs
 7. validate each `group` against the declared groups, warning on unknowns
-8. write `projects.json` and `groups.json` (alongside the existing `profile.json`)
+8. **[partial]** write `projects.json` and `groups.json` — the latter is a single
+   placeholder "ungrouped" group for now
 
 Account resolution order, first hit wins: `GITHUB_REPOSITORY_OWNER` (set by
 Actions), then the owner in the `origin` remote URL, then `gh api user --jq .login`.
@@ -156,8 +159,9 @@ ever loaded at runtime.
 Authenticating only raises the rate limit — the data is public, so the token is
 read-only.
 
-- **Create:** a fine-grained PAT with *Public repositories (read-only)* access
-  and the **Contents: Read** permission (Metadata: Read comes with it).
+- **Create:** a fine-grained PAT with **Public repositories (read-only)** access.
+  That grants read-only access to all public repositories implicitly, so no
+  per-permission selection is needed — Contents and Metadata read come with it.
 - **CI:** store it as the repository secret `GH_TOKEN`
   (`gh secret set GH_TOKEN`). The deploy workflow reads it into a `GH_TOKEN`
   environment variable.
@@ -184,8 +188,9 @@ of a token and a workflow file in every repo.
 
 ## README rendering (planned)
 
-READMEs are precompiled to sanitized HTML at build time rather than rendered in
-the browser.
+For now the repo detail page renders the raw markdown as plain text. The plan is
+to precompile it to sanitized HTML at build time rather than render it in the
+browser.
 
 ```
 remark-parse

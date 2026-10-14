@@ -65,10 +65,19 @@ export function RepoDetailPage() {
         </div>
       </header>
 
-      <section className="rounded-xl border border-dashed border-neutral-300 bg-neutral-50 p-6 text-sm text-neutral-500">
-        The README for <code className="font-mono text-neutral-700">{project.repo}</code> renders here as
-        build-time HTML (plan section 7).
-      </section>
+      {project.readme ? (
+        <section className="rounded-xl border border-neutral-200 bg-neutral-50 p-6">
+          <h2 className="text-xs font-semibold uppercase tracking-wide text-neutral-400">README</h2>
+          {/* Plain text for now; render-markdown.mjs will emit sanitized HTML later (plan section 7). */}
+          <pre className="mt-4 overflow-x-auto whitespace-pre-wrap break-words font-mono text-xs leading-relaxed text-neutral-700">
+            {project.readme}
+          </pre>
+        </section>
+      ) : (
+        <section className="rounded-xl border border-dashed border-neutral-300 bg-neutral-50 p-6 text-sm text-neutral-500">
+          No README available for <code className="font-mono text-neutral-700">{project.repo}</code>.
+        </section>
+      )}
     </div>
   )
 }

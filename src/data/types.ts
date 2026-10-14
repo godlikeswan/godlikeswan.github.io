@@ -46,4 +46,6 @@ export interface Project {
   /** reserved word, fine as an object key but not as a variable name */
   try?: string
   download?: string
+  /** raw README markdown, frontmatter stripped (rendered later by render-markdown) */
+  readme?: string
 }

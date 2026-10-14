@@ -13,9 +13,10 @@ Built with Vite + React + TypeScript, Tailwind CSS, and React Router.
 ## Status
 
 Early, but the shell is live. The app shell, layout, and the GitHub Pages
-deploy workflow are in place; everything runs on **mock data** except the
-profile (name, handle, bio, avatar), which is fetched from GitHub by the refresh
-script. The rest of the data pipeline is next.
+deploy workflow are in place. The refresh script fetches the profile (name,
+handle, bio, avatar), the repository list, and each README from GitHub. Projects
+currently all sit in one temporary **ungrouped** bucket and READMEs render as
+plain text; real groups and the markdown renderer are next.
 
 - [x] Vite + React + TypeScript shell
 - [x] Styling and component stack chosen and wired
@@ -24,8 +25,11 @@ script. The rest of the data pipeline is next.
       the Pages source set to "GitHub Actions"
 - [x] `scripts/refresh-projects.ts` — fetch the profile (name, handle, bio,
       avatar) into `src/generated/` (run with `npm run refresh`)
-- [ ] `scripts/refresh-projects.ts` — fetch repositories, groups, and READMEs
-- [ ] `scripts/render-markdown.mjs` — markdown -> sanitized HTML
+- [x] `scripts/refresh-projects.ts` — fetch repositories and their READMEs
+      (all under a temporary "ungrouped" group until groups land)
+- [ ] `scripts/refresh-projects.ts` — read the real groups from the profile repo
+- [ ] `scripts/render-markdown.mjs` — markdown -> sanitized HTML (READMEs render
+      as plain text for now)
 - [ ] Demo links / embedding for client-only projects
 
 ## Getting started
