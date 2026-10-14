@@ -4,10 +4,11 @@ Technical companion to the [README](README.md). This explains **where the conten
 lives**, how it is fetched, and how it is built.
 
 > **Status (2026-10-14).** The build, routing, and GitHub Pages deploy work, and
-> the shell is live. The data pipeline (`refresh-projects.mjs`,
-> `render-markdown.mjs`) is **designed but not written yet**, so the app
-> currently runs on `src/data/mock.ts` and the deploy workflow skips its fetch
-> step.
+> the shell is live. The data pipeline is **in progress**:
+> `scripts/refresh-projects.ts` now fetches the account profile (name, handle,
+> bio, avatar) into `src/generated/`. Repositories, groups, READMEs, and
+> `render-markdown.mjs` are still to come, so the app falls back to
+> `src/data/mock.ts` for everything else.
 
 ## Principles
 
@@ -93,31 +94,46 @@ doubles as the GitHub profile text.
 refresh (network)  ->  render (offline)  ->  build
 ```
 
-- **refresh** (planned) — `scripts/refresh-projects.mjs` reads the profile,
-  repositories, groups, and READMEs, downloads the referenced images, and writes
-  `src/generated/*.json`.
+- **refresh** (in progress) — `scripts/refresh-projects.ts` currently reads the
+  profile (name, handle, bio, avatar) and writes `src/generated/profile.json`
+  plus `public/generated/avatar-<hash>.<ext>`. The repositories, groups, and
+  READMEs follow the same shape (same account resolution, request helper, and
+  output dirs).
 - **render** (planned) — `scripts/render-markdown.mjs` turns the stored markdown
   into sanitized HTML, plus a heading list for the table of contents.
 - **build** — `vite build` bundles the site.
 
 ### Development vs CI
 
-- **Development (`npm run dev`)** uses `src/data/mock.ts`. No network, no token.
-- **Opt-in local fetch (`npm run refresh`, planned)** fills `src/generated/`
-  with real data; when present, the app prefers it over the mocks. Requires a
-  token in the environment.
+- **Development (`npm run dev`)** falls back to `src/data/mock.ts`. No network,
+  no token.
+- **Opt-in local fetch (`npm run refresh`)** fills `src/generated/` with real
+  data; the seam in `src/data/index.ts` prefers it over the mocks when present.
+  Reads `GH_TOKEN` from the environment or a gitignored `.env`/`.env.local`
+  (see `.env.example`).
 - **CI (the Actions build)** refreshes first (when a token secret is present), so
   the deployed site always reflects current GitHub state.
 
-`src/generated/` — both the JSON and the downloaded assets — is **gitignored**.
-Nothing generated is committed; the repository holds code and mocks only.
+Generated output is **gitignored** and never committed: the JSON lands in
+`src/generated/` (bundled) and downloaded images in `public/generated/` so they
+are served as static files. The repository holds code and mocks only.
 
-## Refresh script (planned)
+Why two directories: Vite only ships files under `src/` that are imported, but
+rendered README HTML and the avatar are referenced by URL at runtime, so their
+files must live where Vite copies them verbatim (`public/`). The JSON, by
+contrast, is imported by the seam and is safe (and smaller) bundled.
+
+## Refresh script
+
+Status: the profile slice is implemented; the repository/group/README steps
+below are still to come.
 
 Authenticates with a fine-grained token (public repositories, contents: read;
 stored as a CI secret, never in the browser), then:
 
-1. read the profile and the list of repositories (paginated, 100 per page)
+0. **[done]** resolve the account name (never hardcoded) and read the profile
+   (`GET /users/<login>`), writing `profile.json` and downloading the avatar
+1. read the list of repositories (paginated, 100 per page)
 2. drop forks, archived repositories, and repositories without a README
 3. read the group files from the profile repository
 4. read each repository's README; parse and strip the YAML frontmatter
@@ -125,7 +141,14 @@ stored as a CI secret, never in the browser), then:
    at the local copies
 6. rewrite relative documentation links to GitHub blob URLs
 7. validate each `group` against the declared groups, warning on unknowns
-8. write `projects.json`, `profile.json`, and `groups.json`
+8. write `projects.json` and `groups.json` (alongside the existing `profile.json`)
+
+Account resolution order, first hit wins: `GITHUB_REPOSITORY_OWNER` (set by
+Actions), then the owner in the `origin` remote URL, then `gh api user --jq .login`.
+
+The script is TypeScript run directly by Node (no build step, no `tsx`): Node
+strips the types, and it imports only *types* from `src/`, so no browser code is
+ever loaded at runtime.
 
 ### Token
 
@@ -137,7 +160,8 @@ read-only.
 - **CI:** store it as the repository secret `GH_TOKEN`
   (`gh secret set GH_TOKEN`). The deploy workflow reads it into a `GH_TOKEN`
   environment variable.
-- **Local:** export `GH_TOKEN`, or put it in `.env.local` (gitignored).
+- **Local:** export `GH_TOKEN`, or put it in a gitignored `.env` / `.env.local`
+  (copy `.env.example`).
 - An expiry is fine: a lapsed token makes the refresh step fail loudly rather
   than silently shipping stale data. Only a *missing* secret falls back to
   mocks, and that prints a notice.
@@ -146,7 +170,8 @@ read-only.
 
 **Assets are downloaded, never hotlinked.** Dynamic badges (shields.io and the
 like) are excluded so they keep updating; images are deduped by content hash and
-written under `src/generated/assets/<repo>/`. Hotlinking would burn GitHub's
+written under `public/generated/<repo>/` (plus the avatar at
+`public/generated/avatar-<hash>.<ext>`). Hotlinking would burn GitHub's
 per-visitor quota, and raw file URLs accept no auth, so visitors would see broken
 images under load.
 

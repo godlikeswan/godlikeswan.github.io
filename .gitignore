@@ -20,6 +20,7 @@ dist-ssr
 # Build-time generated data: fetched from GitHub (mocks are the dev default).
 # Never committed; regenerated at each build, in CI and via `npm run refresh`.
 src/generated
+public/generated
 
 # Editor directories and files
 .vscode/*

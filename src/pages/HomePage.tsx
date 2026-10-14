@@ -1,7 +1,8 @@
 import { Link } from 'react-router'
+import { Avatar } from '../components/Avatar'
 import { GroupIcon } from '../components/GroupIcon'
 import { RepoCard } from '../components/RepoCard'
-import { featuredProjects, groups, profile, projectCount } from '../data/mock'
+import { featuredProjects, groups, profile, projectCount } from '../data'
 
 function projectLabel(count: number): string {
   return count === 1 ? '1 project' : `${count} projects`
@@ -10,10 +11,13 @@ function projectLabel(count: number): string {
 export function HomePage() {
   return (
     <div className="space-y-12">
-      <section>
-        <h1 className="text-3xl font-bold tracking-tight">Hi, I'm {profile.name}.</h1>
-        <p className="mt-4 max-w-2xl text-neutral-600">{profile.bio}</p>
-        {profile.location && <p className="mt-2 text-sm text-neutral-400">{profile.location}</p>}
+      <section className="flex flex-col gap-5 sm:flex-row sm:items-center">
+        <Avatar size={72} />
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Hi, I'm {profile.name}.</h1>
+          <p className="mt-3 max-w-2xl text-neutral-600">{profile.bio}</p>
+          {profile.location && <p className="mt-2 text-sm text-neutral-400">{profile.location}</p>}
+        </div>
       </section>
 
       <section>

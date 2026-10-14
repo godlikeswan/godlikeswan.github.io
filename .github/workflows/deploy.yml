@@ -34,13 +34,13 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      # Real data is fetched here once the pipeline exists. Until then (or
-      # without the token secret) the build uses the mocks in src/data/mock.ts.
+      # Fetches GitHub data (profile today; repos/groups/READMEs next). Without
+      # the token secret the build falls back to the mocks in src/data/.
       - name: Fetch GitHub data
         env:
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
         run: |
-          if [ -z "$GH_TOKEN" ] || [ ! -f scripts/refresh-projects.mjs ]; then
+          if [ -z "$GH_TOKEN" ] || [ ! -f scripts/refresh-projects.ts ]; then
             echo "::notice::No token or refresh script yet - building with mock data."
             exit 0
           fi

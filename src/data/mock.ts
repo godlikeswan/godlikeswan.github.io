@@ -1,63 +1,19 @@
 /**
- * MOCK DATA - stands in for the real build output.
+ * MOCK DATA - the dev fallback.
  *
- * This module is the single seam between the UI and its data. Later it is
- * replaced by src/generated/{profile,groups,projects}.json produced by
- * scripts/refresh-projects.mjs + scripts/render-markdown.mjs (plan sections
- * 4 and 6). The UI should only ever import from a module like this one, so
- * swapping the source means editing this file, not the components.
+ * When `src/generated/*.json` is absent (no `npm run refresh` yet, or a CI run
+ * without a token), src/data/index.ts falls back to these values so the app
+ * still runs. Real data is produced by scripts/refresh-projects.ts.
  */
 
-export type ProjectStatus = 'built' | 'wip' | 'archived'
-
-export type GroupIconId = 'gamepad' | 'music' | 'languages' | 'wrench'
-
-export interface Profile {
-  name: string
-  login: string
-  bio: string
-  location?: string
-  blog?: string
-}
-
-export interface Group {
-  id: string
-  title: string
-  description: string
-  /** hex color used as this group's accent */
-  accent: string
-  icon: GroupIconId
-}
-
-export interface Project {
-  /** GitHub repo name; doubles as the /repos/:repo slug */
-  repo: string
-  title: string
-  /** id of the owning group */
-  group: string
-  summary: string
-  tags: string[]
-  language?: string
-  stars?: number
-  pushedAt?: string
-  featured?: boolean
-  status?: ProjectStatus
-  demo?: string
-  /** reserved word, fine as an object key but not as a variable name */
-  try?: string
-  download?: string
-}
-
-export const statusLabels: Record<ProjectStatus, string> = {
-  built: 'live',
-  wip: 'WIP',
-  archived: 'archived',
-}
+import mockAvatar from '../assets/mock-avatar.png'
+import type { Group, Profile, Project } from './types'
 
 export const profile: Profile = {
   name: 'User',
   login: 'user',
   bio: 'I build small, self-contained tools and games: tiny puzzle solvers, audio toys, and language experiments. Mostly client-side, and mostly over-engineered in a good way.',
+  avatar: mockAvatar,
   location: 'Somewhere on the internet',
   blog: 'https://example.com/',
 }
@@ -181,25 +137,3 @@ export const projects: Project[] = [
     download: 'https://example.com/regex-golf/releases',
   },
 ]
-
-export function groupById(id: string): Group | undefined {
-  return groups.find((group) => group.id === id)
-}
-
-export function projectsInGroup(id: string): Project[] {
-  return projects.filter((project) => project.group === id)
-}
-
-export function projectCount(id: string): number {
-  return projectsInGroup(id).length
-}
-
-export function projectByRepo(repo: string): Project | undefined {
-  return projects.find((project) => project.repo === repo)
-}
-
-export function repoUrl(repo: string): string {
-  return `https://github.com/${profile.login}/${repo}`
-}
-
-export const featuredProjects: Project[] = projects.filter((project) => project.featured)

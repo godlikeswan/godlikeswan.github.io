@@ -1,7 +1,8 @@
 import { Home } from 'lucide-react'
 import { NavLink } from 'react-router'
 import { cn } from '../lib/cn'
-import { groups, profile, projectCount } from '../data/mock'
+import { groups, profile, projectCount } from '../data'
+import { Avatar } from './Avatar'
 import { GroupIcon } from './GroupIcon'
 
 function navLinkClass({ isActive }: { isActive: boolean }): string {
@@ -17,9 +18,12 @@ export function Sidebar() {
   return (
     <aside className="border-b border-neutral-200 md:sticky md:top-0 md:h-screen md:w-64 md:shrink-0 md:overflow-y-auto md:border-b-0 md:border-r">
       <div className="p-4 md:p-6">
-        <NavLink to="/" className="block px-1">
-          <span className="block text-sm font-semibold">{profile.name}</span>
-          <span className="block text-xs text-neutral-400">@{profile.login}</span>
+        <NavLink to="/" className="flex items-center gap-3 px-1">
+          <Avatar size={36} />
+          <span className="min-w-0">
+            <span className="block truncate text-sm font-semibold">{profile.name}</span>
+            <span className="block truncate text-xs text-neutral-400">@{profile.login}</span>
+          </span>
         </NavLink>
 
         <nav className="mt-6 flex flex-col gap-1" aria-label="Project groups">

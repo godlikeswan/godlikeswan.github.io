@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
 import { Download, ExternalLink, Play } from 'lucide-react'
 import { cn } from '../lib/cn'
-import type { Project } from '../data/mock'
+import type { Project } from '../data'
 
 function ActionLink({ href, icon, children }: { href: string; icon: ReactNode; children: ReactNode }) {
   return (

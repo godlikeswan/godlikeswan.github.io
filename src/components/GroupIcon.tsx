@@ -1,6 +1,6 @@
 import { Gamepad2, Languages, Music, Wrench } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
-import type { GroupIconId } from '../data/mock'
+import type { GroupIconId } from '../data'
 
 const icons: Record<GroupIconId, LucideIcon> = {
   gamepad: Gamepad2,

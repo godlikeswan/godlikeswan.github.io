@@ -1,7 +1,7 @@
 import { Link, useParams } from 'react-router'
 import { GroupIcon } from '../components/GroupIcon'
 import { RepoCard } from '../components/RepoCard'
-import { groupById, projectsInGroup } from '../data/mock'
+import { groupById, projectsInGroup } from '../data'
 
 export function GroupPage() {
   const { group: groupId } = useParams()

@@ -1,7 +1,7 @@
 import { ChevronRight, Star } from 'lucide-react'
 import { Link } from 'react-router'
 import { cn } from '../lib/cn'
-import { statusLabels, type Project, type ProjectStatus } from '../data/mock'
+import { statusLabels, type Project, type ProjectStatus } from '../data'
 import { ProjectActions } from './ProjectActions'
 
 const statusClasses: Record<ProjectStatus, string> = {

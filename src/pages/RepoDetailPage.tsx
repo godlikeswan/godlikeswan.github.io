@@ -1,7 +1,7 @@
 import { ChevronLeft, Code } from 'lucide-react'
 import { Link, useParams } from 'react-router'
 import { ProjectActions } from '../components/ProjectActions'
-import { groupById, projectByRepo, repoUrl, statusLabels } from '../data/mock'
+import { groupById, projectByRepo, repoUrl, statusLabels } from '../data'
 
 export function RepoDetailPage() {
   const { repo } = useParams()
