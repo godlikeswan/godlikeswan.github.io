@@ -37,6 +37,7 @@ npm run build    # type-check + production build into dist/
 npm run lint     # oxlint
 npm run preview  # serve the built output locally
 npm run refresh  # fetch GitHub data into src/generated/ (optional; see .env.example)
+npm run clean    # remove dist/ and generated data (next build falls back to mocks)
 ```
 
 `npm run refresh` is optional — without it, the app falls back to the mocks in

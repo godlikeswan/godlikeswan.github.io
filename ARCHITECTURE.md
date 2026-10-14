@@ -106,7 +106,8 @@ refresh (network)  ->  render (offline)  ->  build
 ### Development vs CI
 
 - **Development (`npm run dev`)** falls back to `src/data/mock.ts`. No network,
-  no token.
+  no token. `npm run clean` removes the build output and both generated
+  directories, so the next build starts fresh on the mocks.
 - **Opt-in local fetch (`npm run refresh`)** fills `src/generated/` with real
   data; the seam in `src/data/index.ts` prefers it over the mocks when present.
   Reads `GH_TOKEN` from the environment or a gitignored `.env`/`.env.local`

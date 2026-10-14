@@ -8,7 +8,8 @@
     "build": "tsc -b && vite build",
     "lint": "oxlint",
     "preview": "vite preview",
-    "refresh": "node --env-file-if-exists=.env --env-file-if-exists=.env.local scripts/refresh-projects.ts"
+    "refresh": "node --env-file-if-exists=.env --env-file-if-exists=.env.local scripts/refresh-projects.ts",
+    "clean": "node scripts/clean.ts"
   },
   "dependencies": {
     "@radix-ui/react-dialog": "^1.3.1",
