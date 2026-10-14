@@ -1,7 +1,8 @@
 import { ChevronLeft, Code } from 'lucide-react'
 import { Link, useParams } from 'react-router'
 import { ProjectActions } from '../components/ProjectActions'
-import { groupById, projectByRepo, repoUrl, statusLabels } from '../data'
+import { RenderedMarkdown } from '../components/RenderedMarkdown'
+import { groupById, projectByRepo, readmeByRepo, repoUrl, statusLabels } from '../data'
 
 export function RepoDetailPage() {
   const { repo } = useParams()
@@ -20,6 +21,7 @@ export function RepoDetailPage() {
   }
 
   const group = groupById(project.group)
+  const rendered = readmeByRepo(project.repo)
 
   return (
     <div className="space-y-6">
@@ -65,10 +67,15 @@ export function RepoDetailPage() {
         </div>
       </header>
 
-      {project.readme ? (
+      {rendered ? (
+        <RenderedMarkdown content={rendered} />
+      ) : project.readme ? (
         <section className="rounded-xl border border-neutral-200 bg-neutral-50 p-6">
           <h2 className="text-xs font-semibold uppercase tracking-wide text-neutral-400">README</h2>
-          {/* Plain text for now; render-markdown.mjs will emit sanitized HTML later (plan section 7). */}
+          <p className="mt-1 text-xs text-neutral-500">
+            Not rendered yet (run <code className="font-mono">npm run render</code>); showing the
+            source.
+          </p>
           <pre className="mt-4 overflow-x-auto whitespace-pre-wrap break-words font-mono text-xs leading-relaxed text-neutral-700">
             {project.readme}
           </pre>

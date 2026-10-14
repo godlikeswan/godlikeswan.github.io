@@ -6,9 +6,10 @@ lives**, how it is fetched, and how it is built.
 > **Status (2026-10-14).** The build, routing, and GitHub Pages deploy work, and
 > the shell is live. The data pipeline is **in progress**:
 > `scripts/refresh-projects.ts` fetches the profile, the repository list, and
-> each README into `src/generated/`. Groups are not read yet, so every project is
-> placed in one temporary "ungrouped" group, and READMEs are shown as plain text
-> until `render-markdown.mjs` exists.
+> each README into `src/generated/`, and `scripts/render-markdown.mjs` precompiles
+> those READMEs to sanitized HTML. Groups are not read yet, so every project sits
+> in one temporary "ungrouped" group, and README images and relative links are not
+> localized yet.
 
 ## Principles
 
@@ -99,8 +100,10 @@ refresh (network)  ->  render (offline)  ->  build
   `src/generated/profile.json`, `projects.json`, and `groups.json`, plus the
   avatar in `public/generated/`. Groups currently come from a single placeholder
   "ungrouped" entry.
-- **render** (planned) — `scripts/render-markdown.mjs` turns the stored markdown
-  into sanitized HTML, plus a heading list for the table of contents.
+- **render** — `scripts/render-markdown.mjs` turns the stored markdown into
+  sanitized HTML, plus a heading list for the table of contents, and writes
+  `rendered.json`. It is offline and separate from refresh, so a styling or
+  plugin tweak never re-hits the API; `npm run refresh` just runs it too.
 - **build** — `vite build` bundles the site.
 
 ### Development vs CI
@@ -109,9 +112,10 @@ refresh (network)  ->  render (offline)  ->  build
   no token. `npm run clean` removes the build output and both generated
   directories, so the next build starts fresh on the mocks.
 - **Opt-in local fetch (`npm run refresh`)** fills `src/generated/` with real
-  data; the seam in `src/data/index.ts` prefers it over the mocks when present.
-  Reads `GH_TOKEN` from the environment or a gitignored `.env`/`.env.local`
-  (see `.env.example`).
+  data and then renders the READMEs; the seam in `src/data/index.ts` prefers the
+  generated data over the mocks when present. Reads `GH_TOKEN` from the
+  environment or a gitignored `.env`/`.env.local` (see `.env.example`).
+  `npm run render` re-renders on its own (offline) after a plugin tweak.
 - **CI (the Actions build)** refreshes first (when a token secret is present), so
   the deployed site always reflects current GitHub state.
 
@@ -186,11 +190,13 @@ there are no scheduled runs. Optional later: `repository_dispatch`, where each
 project repo pings this one on README changes for instant rebuilds, at the cost
 of a token and a workflow file in every repo.
 
-## README rendering (planned)
+## README rendering
 
-For now the repo detail page renders the raw markdown as plain text. The plan is
-to precompile it to sanitized HTML at build time rather than render it in the
-browser.
+`scripts/render-markdown.mjs` precompiles each README to sanitized HTML at build
+time. It is **offline**: it reads the markdown out of `projects.json` and writes
+`rendered.json`, so a styling or plugin tweak never re-hits the API. The browser
+ships an HTML string, never a markdown parser; the repo detail page injects it
+into a `prose` wrapper, so styling lives in CSS and never needs a re-render.
 
 ```
 remark-parse
@@ -200,21 +206,53 @@ remark-rehype                    { allowDangerousHtml: true }
 rehype-raw                       parse the safe HTML subset READMEs use
 rehype-sanitize                  GitHub schema (extended, see below)
 rehype-slug                      heading ids
-rehype-autolink-headings         clickable heading anchors
-@shikijs/rehype                  Shiki highlighting (build-time only)
+                                 (headings are collected here, for the TOC)
+rehype-autolink-headings         each heading becomes its own anchor link
+@shikijs/rehype                  Shiki highlighting, github-light
 rehype-stringify
 ```
 
-Why build time: the browser ships an HTML string instead of a markdown parser;
-Shiki highlighting is free out here; the TOC falls out of the AST; and styling
-lives in CSS (`prose`), so it never triggers a re-render.
+Headings are collected right after `rehype-slug` (so the ids exist) and before
+`rehype-autolink-headings` (so the anchor copies do not duplicate the text); the
+detail page builds a table of contents from the depth-2 and depth-3 headings.
 
 **HTML policy.** Real READMEs use `<p align="center">`, `<img>` badges,
 `<details>`, `<sub>`, and `<kbd>`. Stripping HTML silently degrades them, so raw
-HTML is parsed and then sanitized with GitHub's schema (the safe subset). One
-caveat: that schema strips `class` and `style`, so it must be extended to keep
-the downloaded asset paths and the alert classes; Shiki runs after sanitize (its
-output only wraps already-escaped code text).
+HTML is parsed (`rehype-raw`) and then sanitized with GitHub's schema — the safe
+subset, not "no HTML". Two deliberate extensions to that schema:
+
+- `class` is allowed on the tags READMEs and our plugins use, so the alert
+  callouts (`markdown-alert-*`) and the octicon `<svg>`/`<path>` survive.
+- `<svg>`, `<path>`, `<mark>`, `<figure>`/`<figcaption>`, `<abbr>`, and
+  `<hgroup>` are added to the allowed tag list.
+
+Shiki runs **after** the sanitizer on purpose: the schema drops `class` and
+`style`, while Shiki's highlighting is inline styles added afterwards.
+Language-less fenced blocks are highlighted as `text` (`defaultLanguage`) so
+every code block gets the same light treatment instead of falling back to the
+dark `prose` `pre`.
+
+**Style overrides.** `src/index.css` brings the typography plugin's `prose` in
+line with GitHub — mostly removing what the plugin adds and restoring what it
+drops:
+
+- No backticks around inline `code` and no quote marks around `blockquote`
+  paragraphs (the plugin draws both; GitHub doesn't).
+- A visible background for code blocks: Shiki bakes an inline
+  `background-color:#fff` onto its `<pre>`, which overrides the plugin's dark
+  `--tw-prose-pre-bg` and leaves the block invisible on a white page, so the
+  stylesheet forces `#f6f8fa` back on with `!important`.
+- Inline `code` as GitHub's gray chip (background, radius, padding, normal
+  weight).
+- A stronger left border on `blockquote` — GitHub marks quotes with a border,
+  not a background.
+
+The same file styles the alert callouts and keeps heading anchors looking like
+headings.
+
+**Not yet:** README images are still hotlinked or relative, and relative doc
+links are not rewritten to GitHub blob URLs — that is the asset step in the
+refresh script, and until it lands some images and links do not resolve.
 
 ## Routing
 

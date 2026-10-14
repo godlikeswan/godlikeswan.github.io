@@ -11,14 +11,22 @@
  * nothing matches instead of failing to resolve.
  */
 
-import type { Group, Profile, Project } from './types'
+import type { Group, Profile, Project, RenderedReadme } from './types'
 import {
   groups as mockGroups,
   profile as mockProfile,
   projects as mockProjects,
 } from './mock'
 
-export type { Group, GroupIconId, Profile, Project, ProjectStatus } from './types'
+export type {
+  Group,
+  GroupIconId,
+  Heading,
+  Profile,
+  Project,
+  ProjectStatus,
+  RenderedReadme,
+} from './types'
 
 export const statusLabels: Record<Project['status'] & string, string> = {
   built: 'live',
@@ -26,7 +34,7 @@ export const statusLabels: Record<Project['status'] & string, string> = {
   archived: 'archived',
 }
 
-const generated = import.meta.glob('../generated/{profile,groups,projects}.json', {
+const generated = import.meta.glob('../generated/{profile,groups,projects,rendered}.json', {
   eager: true,
   import: 'default',
 }) as Record<string, unknown>
@@ -39,6 +47,14 @@ export const groups: Group[] =
 
 export const projects: Project[] =
   (generated['../generated/projects.json'] as Project[] | undefined) ?? mockProjects
+
+/** Sanitized README HTML by repo, from scripts/render-markdown.mjs. */
+export const readmes: Record<string, RenderedReadme> =
+  (generated['../generated/rendered.json'] as Record<string, RenderedReadme> | undefined) ?? {}
+
+export function readmeByRepo(repo: string): RenderedReadme | undefined {
+  return readmes[repo]
+}
 
 export function groupById(id: string): Group | undefined {
   return groups.find((group) => group.id === id)

@@ -49,3 +49,19 @@ export interface Project {
   /** raw README markdown, frontmatter stripped (rendered later by render-markdown) */
   readme?: string
 }
+
+/** A heading lifted out of a rendered README, for the table of contents. */
+export interface Heading {
+  depth: number
+  id: string
+  text: string
+}
+
+/**
+ * A README precompiled to sanitized HTML by scripts/render-markdown.mjs
+ * (src/generated/rendered.json), keyed by repo name.
+ */
+export interface RenderedReadme {
+  html: string
+  headings: Heading[]
+}
