@@ -3,6 +3,12 @@
 Technical companion to the [README](README.md). This explains **where the content
 lives**, how it is fetched, and how it is built.
 
+> **Status (2026-10-14).** The build, routing, and GitHub Pages deploy work, and
+> the shell is live. The data pipeline (`refresh-projects.mjs`,
+> `render-markdown.mjs`) is **designed but not written yet**, so the app
+> currently runs on `src/data/mock.ts` and the deploy workflow skips its fetch
+> step.
+
 ## Principles
 
 - **Static and client-only.** No server, no runtime API keys, no auth; the
@@ -87,26 +93,26 @@ doubles as the GitHub profile text.
 refresh (network)  ->  render (offline)  ->  build
 ```
 
-- **refresh** — `scripts/refresh-projects.mjs` reads the profile, repositories,
-  groups, and READMEs, downloads the referenced images, and writes
+- **refresh** (planned) — `scripts/refresh-projects.mjs` reads the profile,
+  repositories, groups, and READMEs, downloads the referenced images, and writes
   `src/generated/*.json`.
-- **render** — `scripts/render-markdown.mjs` turns the stored markdown into
-  sanitized HTML, plus a heading list for the table of contents.
+- **render** (planned) — `scripts/render-markdown.mjs` turns the stored markdown
+  into sanitized HTML, plus a heading list for the table of contents.
 - **build** — `vite build` bundles the site.
 
 ### Development vs CI
 
 - **Development (`npm run dev`)** uses `src/data/mock.ts`. No network, no token.
-- **Opt-in local fetch (`npm run refresh`)** fills `src/generated/` with real
-  data; when present, the app prefers it over the mocks. Requires a token in the
-  environment.
+- **Opt-in local fetch (`npm run refresh`, planned)** fills `src/generated/`
+  with real data; when present, the app prefers it over the mocks. Requires a
+  token in the environment.
 - **CI (the Actions build)** refreshes first (when a token secret is present), so
   the deployed site always reflects current GitHub state.
 
 `src/generated/` — both the JSON and the downloaded assets — is **gitignored**.
 Nothing generated is committed; the repository holds code and mocks only.
 
-## Refresh script
+## Refresh script (planned)
 
 Authenticates with a fine-grained token (public repositories, contents: read;
 stored as a CI secret, never in the browser), then:
@@ -150,7 +156,7 @@ there are no scheduled runs. Optional later: `repository_dispatch`, where each
 project repo pings this one on README changes for instant rebuilds, at the cost
 of a token and a workflow file in every repo.
 
-## README rendering
+## README rendering (planned)
 
 READMEs are precompiled to sanitized HTML at build time rather than rendered in
 the browser.
@@ -195,12 +201,14 @@ Deployed to GitHub Pages from a user-site repository (`<user>.github.io`), serve
 at the domain root, so Vite uses `base: '/'` and there is no path prefix.
 
 Pages has no rewrite rules, so a deep link such as `/repos/example` would 404 on
-refresh. The build copies `index.html` to `404.html`; Pages serves it for unknown
-paths and the client-side router takes over.
+refresh. The build copies `index.html` to `404.html` (a small Vite plugin in
+`vite.config.ts`); Pages serves it for unknown paths and the client-side router
+takes over.
 
 Deployment runs through GitHub Actions (`actions/upload-pages-artifact` +
 `actions/deploy-pages`) in `.github/workflows/deploy.yml`. It runs on every push
 to the default branch and on manual `workflow_dispatch` — no scheduled builds.
+The repository's Pages source is set to *GitHub Actions* rather than a branch.
 
 Two notes for future demos:
 

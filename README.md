@@ -12,13 +12,15 @@ Built with Vite + React + TypeScript, Tailwind CSS, and React Router.
 
 ## Status
 
-Early. The application shell, layout, and the GitHub Pages deploy workflow are
-in place against **mock data**; the GitHub data pipeline is next.
+Early, but the shell is live. The app shell, layout, and the GitHub Pages
+deploy workflow are in place against **mock data**; the GitHub data pipeline is
+next.
 
 - [x] Vite + React + TypeScript shell
 - [x] Styling and component stack chosen and wired
 - [x] Layout, routing, project cards (mock data)
-- [x] GitHub Pages deploy via Actions (push + manual; switch the Pages source to "GitHub Actions")
+- [x] GitHub Pages deploy via Actions — runs on push and manual dispatch, with
+      the Pages source set to "GitHub Actions"
 - [ ] `scripts/refresh-projects.mjs` — fetch profile, repos, groups, READMEs, assets
 - [ ] `scripts/render-markdown.mjs` — markdown -> sanitized HTML
 - [ ] Demo links / embedding for client-only projects
@@ -39,13 +41,16 @@ npm run preview  # serve the built output locally
 ## Project structure
 
 ```
+.github/workflows/  deploy.yml — build + deploy to GitHub Pages
 src/
   data/         mock data for now; src/generated/* (gitignored) once fetched
   layouts/      RootLayout — persistent sidebar + main content
   components/   Sidebar, RepoCard, ProjectActions, GroupIcon
   pages/        HomePage, GroupPage, RepoDetailPage, NotFoundPage
+  lib/          cn() class helper
   router.tsx    route definitions
 scripts/        (planned) refresh-projects.mjs, render-markdown.mjs
+vite.config.ts  Tailwind plugin + the index.html -> 404.html SPA fallback
 ```
 
 ## Documentation
