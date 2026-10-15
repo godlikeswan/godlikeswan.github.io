@@ -3,7 +3,7 @@
 Technical companion to the [README](README.md). This explains **where the content
 lives**, how it is fetched, and how it is built.
 
-> **Status (2026-10-14).** The build, routing, and GitHub Pages deploy work, and
+> **Status (2026-10-15).** The build, routing, and GitHub Pages deploy work, and
 > the shell is live. The data pipeline is **in progress**:
 > `scripts/refresh-projects.ts` fetches the profile, the repository list, and
 > each README into `src/generated/`, stores the resources those READMEs
@@ -232,7 +232,7 @@ rehype-sanitize                  GitHub schema (extended, see below)
 rehype-slug                      heading ids
                                  (headings are collected here, for the TOC)
 rehype-autolink-headings         each heading becomes its own anchor link
-@shikijs/rehype                  Shiki highlighting, github-light
+@shikijs/rehype                  Shiki highlighting, github-light + github-dark
 rehype-stringify
 ```
 
@@ -257,8 +257,8 @@ subset, not "no HTML". Two deliberate extensions to that schema:
 Shiki runs **after** the sanitizer on purpose: the schema drops `class` and
 `style`, while Shiki's highlighting is inline styles added afterwards.
 Language-less fenced blocks are highlighted as `text` (`defaultLanguage`) so
-every code block gets the same light treatment instead of falling back to the
-dark `prose` `pre`.
+every code block gets the same highlighted treatment instead of falling back to
+the plugin's own `pre` styling.
 
 **Style overrides.** `src/index.css` brings the typography plugin's `prose` in
 line with GitHub — mostly removing what the plugin adds and restoring what it
@@ -269,7 +269,7 @@ drops:
 - A visible background for code blocks: Shiki bakes an inline
   `background-color:#fff` onto its `<pre>`, which overrides the plugin's dark
   `--tw-prose-pre-bg` and leaves the block invisible on a white page, so the
-  stylesheet forces `#f6f8fa` back on with `!important`.
+  stylesheet forces `#f6f8fa` back on with `!important` (`#161b22` in dark).
 - Inline `code` as GitHub's gray chip (background, radius, padding, normal
   weight).
 - A stronger left border on `blockquote` — GitHub marks quotes with a border,
@@ -277,6 +277,32 @@ drops:
 
 The same file styles the alert callouts and keeps heading anchors looking like
 headings.
+
+### Theming
+
+The site follows the OS setting. There is no toggle and no theme state, so
+nothing is stored per visitor and no switching logic ships to the browser:
+
+- The app chrome uses Tailwind's `dark:` variant, which *is*
+  `@media (prefers-color-scheme: dark)`. Each light/dark pair sits next to the
+  other in the component, so there is no separate theme file to keep in sync;
+  the README wrapper adds `dark:prose-invert`.
+- The rendered README keeps GitHub's **own** dark palette (code `#161b22`, the
+  alert callouts, the inline-code chip) rather than an invented one, so a README
+  still looks like it does on github.com. Those rules are plain CSS under the
+  same media query, beside their light values.
+- Shiki is the one part that cannot be a CSS override, because the highlighting
+  is baked into the HTML. `render-markdown.mjs` therefore highlights **both**
+  themes at build time and Shiki emits each token as `--shiki-light` /
+  `--shiki-dark` CSS variables; the stylesheet picks one under the media query.
+  Still no runtime work, and no second pass at the API.
+- `index.html` sets `color-scheme` (and a `theme-color` per scheme) so the
+  browser paints scrollbars, form controls, and the canvas to match before the
+  stylesheet lands — a dark desktop never flashes white.
+
+Group accent colors are authored for a light page, so the accent elements get
+`dark:brightness-125` to keep mid-tone colors legible on the dark background; a
+very dark accent would still need authoring for both.
 
 **Limits.** A README's non-image files (a video, an archive) stay links rather
 than being copied into the build, and images hosted outside GitHub are left

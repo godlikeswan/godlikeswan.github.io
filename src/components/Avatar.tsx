@@ -23,7 +23,7 @@ export function Avatar({ size = 40, className }: { size?: number; className?: st
         width={size}
         height={size}
         style={box}
-        className={cn('shrink-0 rounded-full bg-neutral-100 object-cover', className)}
+        className={cn('shrink-0 rounded-full bg-neutral-100 object-cover dark:bg-neutral-800', className)}
       />
     )
   }
@@ -33,7 +33,7 @@ export function Avatar({ size = 40, className }: { size?: number; className?: st
       aria-hidden="true"
       style={{ ...box, fontSize: Math.round(size * 0.36) }}
       className={cn(
-        'flex shrink-0 items-center justify-center rounded-full bg-neutral-200 font-semibold text-neutral-600',
+        'flex shrink-0 items-center justify-center rounded-full bg-neutral-200 font-semibold text-neutral-600 dark:bg-neutral-700 dark:text-neutral-300',
         className,
       )}
     >

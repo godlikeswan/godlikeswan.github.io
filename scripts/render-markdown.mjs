@@ -53,8 +53,14 @@ const INPUT = resolve(ROOT, 'src/generated/projects.json')
 const ASSETS = resolve(ROOT, 'src/generated/assets.json')
 const OUTPUT = resolve(ROOT, 'src/generated/rendered.json')
 
-/** Light UI, so a single light theme -- no dark variant switching. */
-const SHIKI_THEME = 'github-light'
+/**
+ * Both schemes at once: Shiki writes each token as a pair of CSS variables
+ * (`--shiki-light` / `--shiki-dark`), and index.css picks one under
+ * `prefers-color-scheme`. Highlighting twice at build time keeps any theme
+ * switching out of the browser entirely. `github-light`/`github-dark` are the
+ * matched pair, like the rest of the README palette.
+ */
+const SHIKI_THEMES = { light: 'github-light', dark: 'github-dark' }
 
 /**
  * Language-less fenced blocks (``` with no info string) would otherwise skip
@@ -200,7 +206,7 @@ async function renderMarkdown(markdown, rewrites) {
     .use(rehypeSlug)
     .use(rehypeCollectHeadings, headings)
     .use(rehypeAutolinkHeadings, { behavior: 'wrap' })
-    .use(rehypeShiki, { theme: SHIKI_THEME, defaultLanguage: SHIKI_DEFAULT_LANGUAGE })
+    .use(rehypeShiki, { themes: SHIKI_THEMES, defaultLanguage: SHIKI_DEFAULT_LANGUAGE })
     .use(rehypeStringify)
     .process(markdown)
 

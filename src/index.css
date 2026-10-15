@@ -2,6 +2,28 @@
 @plugin "@tailwindcss/typography";
 
 /* ---------------------------------------------------------------------------
+   Color scheme
+
+   The site follows the OS setting, so there is no toggle and no theme state:
+   Tailwind's `dark:` variant already compiles to `@media (prefers-color-scheme:
+   dark)`. `color-scheme` is what makes the browser paint scrollbars, form
+   controls, and the overscroll area to match (and keeps a dark desktop from
+   flashing white before the stylesheet lands).
+   --------------------------------------------------------------------------- */
+
+html {
+  color-scheme: light dark;
+}
+
+@media (prefers-color-scheme: dark) {
+  /* The page background lives on the RootLayout div, which only covers the
+     viewport -- this paints the canvas behind and around it (overscroll). */
+  html {
+    background-color: #0a0a0a; /* neutral-950 */
+  }
+}
+
+/* ---------------------------------------------------------------------------
    Rendered README (see scripts/render-markdown.mjs)
 
    The HTML is produced at build time and sanitized; everything below is
@@ -113,4 +135,72 @@
 }
 .prose .markdown-alert-caution .markdown-alert-title {
   color: #cf222e;
+}
+
+/* ---------------------------------------------------------------------------
+   Rendered README, dark
+
+   GitHub's own dark palette, so a README still looks like it does on
+   github.com. This is a plain @media block rather than `dark:` variants because
+   the rules above are plain CSS with GitHub's literal colors; keeping the two
+   palettes side by side makes it obvious which value belongs to which scheme.
+   --------------------------------------------------------------------------- */
+@media (prefers-color-scheme: dark) {
+  /* Shiki emits both themes as CSS variables (see render-markdown.mjs): the
+     light color is inline on each token span and the dark one is `--shiki-dark`,
+     so the override needs !important to beat the inline style. The <pre> keeps
+     our own background in both schemes (GitHub's dark code block, not Shiki's
+     --shiki-dark-bg), and needs !important on the fallback color too, since
+     plain text in the block inherits it through Shiki's inline one. */
+  .prose pre {
+    background-color: #161b22 !important;
+    color: #e6edf3 !important;
+  }
+  .prose pre :where(span) {
+    color: var(--shiki-dark) !important;
+  }
+
+  .prose :where(code):not(:where(pre *)) {
+    background-color: rgba(110, 118, 129, 0.4);
+  }
+
+  .prose blockquote {
+    border-inline-start-color: #3d444d;
+  }
+
+  .prose .markdown-alert-note {
+    border-color: #1f6feb;
+    background-color: rgba(56, 139, 253, 0.1);
+  }
+  .prose .markdown-alert-note .markdown-alert-title {
+    color: #4493f8;
+  }
+  .prose .markdown-alert-tip {
+    border-color: #238636;
+    background-color: rgba(46, 160, 67, 0.1);
+  }
+  .prose .markdown-alert-tip .markdown-alert-title {
+    color: #3fb950;
+  }
+  .prose .markdown-alert-important {
+    border-color: #8957e5;
+    background-color: rgba(163, 113, 247, 0.1);
+  }
+  .prose .markdown-alert-important .markdown-alert-title {
+    color: #ab7df8;
+  }
+  .prose .markdown-alert-warning {
+    border-color: #9e6a03;
+    background-color: rgba(187, 128, 9, 0.1);
+  }
+  .prose .markdown-alert-warning .markdown-alert-title {
+    color: #d29922;
+  }
+  .prose .markdown-alert-caution {
+    border-color: #da3633;
+    background-color: rgba(248, 81, 73, 0.1);
+  }
+  .prose .markdown-alert-caution .markdown-alert-title {
+    color: #f85149;
+  }
 }

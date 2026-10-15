@@ -9,7 +9,7 @@ function ActionLink({ href, icon, children }: { href: string; icon: ReactNode; c
       href={href}
       target="_blank"
       rel="noreferrer noopener"
-      className="relative z-10 inline-flex items-center gap-1.5 rounded-md border border-neutral-200 bg-white px-2.5 py-1 text-xs font-medium text-neutral-700 transition-colors hover:border-neutral-300 hover:bg-neutral-50"
+      className="relative z-10 inline-flex items-center gap-1.5 rounded-md border border-neutral-200 bg-white px-2.5 py-1 text-xs font-medium text-neutral-700 transition-colors hover:border-neutral-300 hover:bg-neutral-50 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-300 dark:hover:border-neutral-600 dark:hover:bg-neutral-700"
     >
       {icon}
       {children}

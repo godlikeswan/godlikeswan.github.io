@@ -4,6 +4,12 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- The site follows the OS setting. This tells the browser up front so it
+         paints the canvas and browser chrome (scrollbars, overscroll area) to
+         match before the stylesheet lands -- no white flash on a dark desktop. -->
+    <meta name="color-scheme" content="light dark" />
+    <meta name="theme-color" media="(prefers-color-scheme: light)" content="#ffffff" />
+    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0a0a0a" />
     <title>Portfolio</title>
   </head>
   <body>

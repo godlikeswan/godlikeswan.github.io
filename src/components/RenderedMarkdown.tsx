@@ -17,9 +17,9 @@ export function RenderedMarkdown({ content }: { content: RenderedReadme }) {
       {toc.length >= 3 && (
         <nav
           aria-label="On this page"
-          className="rounded-xl border border-neutral-200 bg-neutral-50 p-4"
+          className="rounded-xl border border-neutral-200 bg-neutral-50 p-4 dark:border-neutral-800 dark:bg-neutral-900"
         >
-          <p className="text-xs font-semibold uppercase tracking-wide text-neutral-400">
+          <p className="text-xs font-semibold uppercase tracking-wide text-neutral-400 dark:text-neutral-500">
             On this page
           </p>
           <ul className="mt-2 space-y-1 text-sm">
@@ -30,7 +30,7 @@ export function RenderedMarkdown({ content }: { content: RenderedReadme }) {
               >
                 <a
                   href={`#${heading.id}`}
-                  className="text-neutral-600 transition-colors hover:text-neutral-900"
+                  className="text-neutral-600 transition-colors hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-neutral-100"
                 >
                   {heading.text}
                 </a>
@@ -41,7 +41,7 @@ export function RenderedMarkdown({ content }: { content: RenderedReadme }) {
       )}
 
       <article
-        className="prose prose-neutral max-w-none"
+        className="prose prose-neutral max-w-none dark:prose-invert"
         dangerouslySetInnerHTML={{ __html: content.html }}
       />
     </div>

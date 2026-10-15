@@ -15,25 +15,25 @@ export function HomePage() {
         <Avatar size={72} />
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Hi, I'm {profile.name}.</h1>
-          <p className="mt-3 max-w-2xl text-neutral-600">{profile.bio}</p>
-          {profile.location && <p className="mt-2 text-sm text-neutral-400">{profile.location}</p>}
+          <p className="mt-3 max-w-2xl text-neutral-600 dark:text-neutral-400">{profile.bio}</p>
+          {profile.location && <p className="mt-2 text-sm text-neutral-400 dark:text-neutral-500">{profile.location}</p>}
         </div>
       </section>
 
       <section>
-        <h2 className="text-xs font-semibold uppercase tracking-wide text-neutral-400">What I make</h2>
+        <h2 className="text-xs font-semibold uppercase tracking-wide text-neutral-400 dark:text-neutral-500">What I make</h2>
         <ul className="mt-4 grid gap-3 sm:grid-cols-2">
           {groups.map((group) => (
             <li key={group.id}>
               <Link
                 to={`/${group.id}`}
-                className="flex h-full flex-col rounded-xl border border-neutral-200 p-4 transition-colors hover:border-neutral-300 hover:bg-neutral-50"
+                className="flex h-full flex-col rounded-xl border border-neutral-200 p-4 transition-colors hover:border-neutral-300 hover:bg-neutral-50 dark:border-neutral-800 dark:hover:border-neutral-700 dark:hover:bg-neutral-900"
               >
-                <span className="flex items-center gap-2 text-sm font-medium" style={{ color: group.accent }}>
+                <span className="flex items-center gap-2 text-sm font-medium dark:brightness-125" style={{ color: group.accent }}>
                   <GroupIcon name={group.icon} className="size-4" />
                   {group.title}
                 </span>
-                <span className="mt-1 text-xs text-neutral-400">{projectLabel(projectCount(group.id))}</span>
+                <span className="mt-1 text-xs text-neutral-400 dark:text-neutral-500">{projectLabel(projectCount(group.id))}</span>
               </Link>
             </li>
           ))}
@@ -41,7 +41,7 @@ export function HomePage() {
       </section>
 
       <section>
-        <h2 className="text-xs font-semibold uppercase tracking-wide text-neutral-400">Featured</h2>
+        <h2 className="text-xs font-semibold uppercase tracking-wide text-neutral-400 dark:text-neutral-500">Featured</h2>
         <div className="mt-4 grid gap-4 sm:grid-cols-2">
           {featuredProjects.map((project) => (
             <RepoCard key={project.repo} project={project} />

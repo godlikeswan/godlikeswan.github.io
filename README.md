@@ -20,6 +20,8 @@ step precompiles them to sanitized HTML (tables, task lists, alert callouts, and
 Shiki-highlighted code). Projects still sit in one temporary **ungrouped**
 bucket; real groups are next.
 
+The UI follows the OS color scheme — light and dark, no toggle.
+
 - [x] Vite + React + TypeScript shell
 - [x] Styling and component stack chosen and wired
 - [x] Layout, routing, project cards (mock data)
@@ -35,6 +37,8 @@ bucket; real groups are next.
 - [x] `scripts/render-markdown.mjs` — README markdown -> sanitized HTML with the
       unified pipeline (GFM tables/task lists, alert callouts, heading ids and
       anchors, Shiki highlighting), plus a heading list for the TOC
+- [x] Light and dark theme following the OS setting (Tailwind `dark:`, GitHub's
+      own dark palette inside rendered READMEs, Shiki highlighted for both)
 - [ ] `scripts/refresh-projects.ts` — read the real groups from the profile repo
 - [ ] Demo links / embedding for client-only projects
 
