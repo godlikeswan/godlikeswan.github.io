@@ -6,10 +6,10 @@ lives**, how it is fetched, and how it is built.
 > **Status (2026-10-14).** The build, routing, and GitHub Pages deploy work, and
 > the shell is live. The data pipeline is **in progress**:
 > `scripts/refresh-projects.ts` fetches the profile, the repository list, and
-> each README into `src/generated/`, and `scripts/render-markdown.mjs` precompiles
-> those READMEs to sanitized HTML. Groups are not read yet, so every project sits
-> in one temporary "ungrouped" group, and README images and relative links are not
-> localized yet.
+> each README into `src/generated/`, stores the resources those READMEs
+> reference (`scripts/readme-assets.ts`), and `scripts/render-markdown.mjs`
+> precompiles them to sanitized HTML. Groups are not read yet, so every project
+> sits in one temporary "ungrouped" group.
 
 ## Principles
 
@@ -97,13 +97,16 @@ refresh (network)  ->  render (offline)  ->  build
 
 - **refresh** (in progress) — `scripts/refresh-projects.ts` reads the profile,
   the public repository list (paginated), and each repository's README. It writes
-  `src/generated/profile.json`, `projects.json`, and `groups.json`, plus the
-  avatar in `public/generated/`. Groups currently come from a single placeholder
+  `src/generated/profile.json`, `projects.json`, `groups.json`, and
+  `assets.json`, and downloads the avatar and every README image into
+  `public/generated/`. Groups currently come from a single placeholder
   "ungrouped" entry.
 - **render** — `scripts/render-markdown.mjs` turns the stored markdown into
   sanitized HTML, plus a heading list for the table of contents, and writes
-  `rendered.json`. It is offline and separate from refresh, so a styling or
-  plugin tweak never re-hits the API; `npm run refresh` just runs it too.
+  `rendered.json`. On the way it applies the rewrites recorded in `assets.json`,
+  so the HTML points at the downloaded copies. It is offline and separate from
+  refresh, so a styling or plugin tweak never re-hits the API; `npm run refresh`
+  just runs it too.
 - **build** — `vite build` bundles the site.
 
 ### Development vs CI
@@ -124,14 +127,17 @@ Generated output is **gitignored** and never committed: the JSON lands in
 are served as static files. The repository holds code and mocks only.
 
 Why two directories: Vite only ships files under `src/` that are imported, but
-rendered README HTML and the avatar are referenced by URL at runtime, so their
-files must live where Vite copies them verbatim (`public/`). The JSON, by
-contrast, is imported by the seam and is safe (and smaller) bundled.
+rendered README HTML and the downloaded images are referenced by URL at runtime,
+so their files must live where Vite copies them verbatim (`public/`). The JSON,
+by contrast, is imported by the seam and is safe (and smaller) bundled.
+`assets.json` is written to `src/generated/` but deliberately **not** globbed by
+the seam: by the time the app runs, its rewrites are already baked into
+`rendered.json`.
 
 ## Refresh script
 
-Status: the profile, repository list, and READMEs are implemented. Real groups
-and README image/link rewriting are still to come.
+Status: the profile, repository list, READMEs, and the resources they reference
+are implemented. Real groups are still to come.
 
 Authenticates with a fine-grained token (public repositories, read-only; stored
 as a CI secret, never in the browser), then:
@@ -141,15 +147,15 @@ as a CI secret, never in the browser), then:
 1. **[done]** read the list of repositories (paginated, 100 per page)
 2. **[done]** drop forks, archived repositories, and repositories without a
    README; also skip the `<login>/<login>` profile repository
-3. read the group files from the profile repository
-4. **[partial]** read each repository's README and strip the YAML frontmatter
-   (the fields are not parsed yet, so every project lands in "ungrouped")
-5. download the images each README references and rewrite the markdown to point
-   at the local copies
-6. rewrite relative documentation links to GitHub blob URLs
-7. validate each `group` against the declared groups, warning on unknowns
-8. **[partial]** write `projects.json` and `groups.json` — the latter is a single
-   placeholder "ungrouped" group for now
+3. **[done]** read each repository's README and strip the YAML frontmatter (the
+   fields are not parsed yet, so every project lands in "ungrouped")
+4. **[done]** store the resources each README references: download its images
+   into `public/generated/<repo>/`, turn relative documentation links into
+   GitHub blob URLs, and record the map in `assets.json`
+5. read the group files from the profile repository
+6. validate each `group` against the declared groups, warning on unknowns
+7. **[partial]** write `projects.json`, `groups.json`, and `assets.json`; the
+   groups file is a single placeholder "ungrouped" group for now
 
 Account resolution order, first hit wins: `GITHUB_REPOSITORY_OWNER` (set by
 Actions), then the owner in the `origin` remote URL, then `gh api user --jq .login`.
@@ -177,12 +183,29 @@ read-only.
 - The Pages deploy does not use this token at all — it uses the workflow's own
   `GITHUB_TOKEN` through OIDC.
 
-**Assets are downloaded, never hotlinked.** Dynamic badges (shields.io and the
-like) are excluded so they keep updating; images are deduped by content hash and
-written under `public/generated/<repo>/` (plus the avatar at
-`public/generated/avatar-<hash>.<ext>`). Hotlinking would burn GitHub's
-per-visitor quota, and raw file URLs accept no auth, so visitors would see broken
-images under load.
+**Assets are stored and served locally, never hotlinked.**
+`scripts/readme-assets.ts` walks every reference a README makes — by parsing it,
+so a URL inside a code fence or a code span is never touched — and:
+
+- **downloads** each image into `public/generated/<repo>/<hash>.<ext>`, deduped
+  by content hash, then serves it from `/generated/<repo>/...`
+- **rewrites** relative documentation links to their GitHub blob URL
+- **leaves everything else alone**: badges (shields.io and friends) and other
+  third-party hosts stay live and keep updating, and absolute links and anchors
+  already work
+
+Only relative references and absolute URLs already on GitHub's own asset hosts
+(`raw.githubusercontent.com`, `user-images.githubusercontent.com`,
+`camo.githubusercontent.com`) are localized. Anything over 5 MB is left as a
+remote URL rather than pulled into the build, and every decision — including
+what was skipped and why — is recorded in `assets.json`. Hotlinking would burn
+GitHub's per-visitor quota, and raw file URLs accept no auth, so visitors would
+see broken images under load.
+
+The map is keyed by the reference **exactly as written**, and
+`scripts/render-markdown.mjs` applies it to the parsed HTML tree rather than to
+the markdown text. That keeps the stored body byte-identical to GitHub's, so the
+raw source stays traceable and rewrites never leak into prose.
 
 **Refresh trigger.** Refresh is a step in the same workflow that deploys, so it
 runs on every push to the default branch and on manual `workflow_dispatch` —
@@ -204,6 +227,7 @@ remark-gfm                       tables, task lists, footnotes, autolinks
 remark-github-blockquote-alert   > [!NOTE] callouts
 remark-rehype                    { allowDangerousHtml: true }
 rehype-raw                       parse the safe HTML subset READMEs use
+rehype-localize-references       point images/links at the stored copies
 rehype-sanitize                  GitHub schema (extended, see below)
 rehype-slug                      heading ids
                                  (headings are collected here, for the TOC)
@@ -215,6 +239,10 @@ rehype-stringify
 Headings are collected right after `rehype-slug` (so the ids exist) and before
 `rehype-autolink-headings` (so the anchor copies do not duplicate the text); the
 detail page builds a table of contents from the depth-2 and depth-3 headings.
+
+References are localized **before** the sanitizer runs, so the sanitizer sees
+(and allows) the final `src` and `href`; the map comes from `assets.json`, keyed
+by each reference exactly as written in the stored markdown.
 
 **HTML policy.** Real READMEs use `<p align="center">`, `<img>` badges,
 `<details>`, `<sub>`, and `<kbd>`. Stripping HTML silently degrades them, so raw
@@ -250,9 +278,12 @@ drops:
 The same file styles the alert callouts and keeps heading anchors looking like
 headings.
 
-**Not yet:** README images are still hotlinked or relative, and relative doc
-links are not rewritten to GitHub blob URLs — that is the asset step in the
-refresh script, and until it lands some images and links do not resolve.
+**Limits.** A README's non-image files (a video, an archive) stay links rather
+than being copied into the build, and images hosted outside GitHub are left
+hotlinked so third-party content keeps working. Anything GitHub-hosted that
+could not be downloaded — over the size cap, or a failed request — is recorded
+in `assets.json` with the reason and falls back to its absolute URL rather than
+staying relative.
 
 ## Routing
 

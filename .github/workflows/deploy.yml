@@ -34,10 +34,10 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      # Fetches GitHub data (profile, repos, READMEs) and precompiles the
-      # README markdown to HTML. Without the token secret the build falls back
-      # to the mocks in src/data/.
-      - name: Fetch GitHub data and render READMEs
+      # Fetches GitHub data (profile, repos, READMEs), stores the images those
+      # READMEs reference, and precompiles the markdown to HTML. Without the
+      # token secret the build falls back to the mocks in src/data/.
+      - name: Fetch GitHub data, README assets, and render READMEs
         env:
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
         run: |

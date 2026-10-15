@@ -14,11 +14,11 @@ Built with Vite + React + TypeScript, Tailwind CSS, and React Router.
 
 Early, but the shell is live. The app shell, layout, and the GitHub Pages
 deploy workflow are in place. The refresh script fetches the profile (name,
-handle, bio, avatar), the repository list, and each README from GitHub, and a
-separate offline step precompiles those READMEs to sanitized HTML (tables, task
-lists, alert callouts, and Shiki-highlighted code). Projects still sit in one
-temporary **ungrouped** bucket; real groups and README asset downloading are
-next.
+handle, bio, avatar), the repository list, and each README from GitHub, stores
+the images and relative links those READMEs reference, and a separate offline
+step precompiles them to sanitized HTML (tables, task lists, alert callouts, and
+Shiki-highlighted code). Projects still sit in one temporary **ungrouped**
+bucket; real groups are next.
 
 - [x] Vite + React + TypeScript shell
 - [x] Styling and component stack chosen and wired
@@ -29,12 +29,13 @@ next.
       avatar) into `src/generated/` (run with `npm run refresh`)
 - [x] `scripts/refresh-projects.ts` — fetch repositories and their READMEs
       (all under a temporary "ungrouped" group until groups land)
+- [x] `scripts/readme-assets.ts` — store what each README references: download its
+      images into `public/generated/<repo>/` and rewrite relative doc links, then
+      record the map in `assets.json`
 - [x] `scripts/render-markdown.mjs` — README markdown -> sanitized HTML with the
       unified pipeline (GFM tables/task lists, alert callouts, heading ids and
       anchors, Shiki highlighting), plus a heading list for the TOC
 - [ ] `scripts/refresh-projects.ts` — read the real groups from the profile repo
-- [ ] `scripts/refresh-projects.ts` — download README images and rewrite relative
-      doc links (images are still hotlinked/relative until then)
 - [ ] Demo links / embedding for client-only projects
 
 ## Getting started
@@ -45,20 +46,22 @@ npm run dev      # start the dev server
 npm run build    # type-check + production build into dist/
 npm run lint     # oxlint
 npm run preview  # serve the built output locally
-npm run refresh  # fetch GitHub data + render READMEs into src/generated/ (optional)
+npm run refresh  # fetch GitHub data + README images, then render (optional)
 npm run render   # (re)render READMEs only — offline, no API calls
 npm run clean    # remove dist/ and generated data (next build falls back to mocks)
 ```
 
 `npm run refresh` is optional — without it, the app falls back to the mocks in
 `src/data/`. It reads `GH_TOKEN` from the environment or a gitignored `.env` /
-`.env.local` (copy `.env.example`).
+`.env.local` (copy `.env.example`). It writes JSON to `src/generated/` and
+downloads images to `public/generated/`; both are gitignored.
 
 ## Project structure
 
 ```
 .github/workflows/  deploy.yml — build + deploy to GitHub Pages
 scripts/        refresh-projects.ts — fetch GitHub data into src/generated/
+                readme-assets.ts — store README images + rewrite relative links
                 render-markdown.mjs — README markdown -> sanitized HTML (offline)
                 clean.ts — remove dist/ and generated data
 src/
@@ -71,7 +74,7 @@ src/
   router.tsx    route definitions
   generated/    (gitignored) JSON produced by `npm run refresh` / `npm run render`
 public/
-  generated/    (gitignored) downloaded images, e.g. the avatar
+  generated/    (gitignored) downloaded images: the avatar and README assets
 vite.config.ts  Tailwind plugin + the index.html -> 404.html SPA fallback
 ```
 

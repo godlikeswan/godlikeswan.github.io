@@ -9,16 +9,22 @@
  *                                          -> public/generated/avatar-<hash>.<ext>
  *   GET /users/<login>/repos (paginated)   -> the repository list
  *   GET /repos/<login>/<repo>/readme       -> each README body
+ *   README images on GitHub's asset hosts  -> public/generated/<repo>/<hash>.<ext>
  *
  * and writes:
  *
  *   src/generated/projects.json   one entry per repo that has a README
  *   src/generated/groups.json     placeholder: a single "ungrouped" group
+ *   src/generated/assets.json     which README resources moved where
+ *
+ * README resources are stored and served locally rather than hotlinked (plan
+ * sections 7 and 8): images are downloaded and relative doc links are pointed
+ * at the GitHub blob view. scripts/readme-assets.ts owns those rules.
  *
  * Still to come: reading the real groups from the profile repo's groups/<id>.md
- * files, parsing each README's YAML frontmatter for group/tags/links, and
- * downloading README images. The account resolution, request helper, and output
- * dirs below stay the same as those steps land.
+ * files, and parsing each README's YAML frontmatter for group/tags/links. The
+ * account resolution, request helper, and output dirs below stay the same as
+ * those steps land.
  *
  * Runs directly under Node (>= 23.6 strips types with no flag). It imports
  * only TYPES from src/, so nothing browser-facing is ever loaded at runtime.
@@ -29,12 +35,17 @@ import { createHash } from 'node:crypto'
 import { mkdir, rm, writeFile } from 'node:fs/promises'
 import { resolve } from 'node:path'
 import type { Group, Profile, Project } from '../src/data/types.ts'
+import {
+  EXT_BY_CONTENT_TYPE,
+  USER_AGENT,
+  localizeReadmeAssets,
+  type RepoAssets,
+} from './readme-assets.ts'
 
 const ROOT = resolve(import.meta.dirname, '..')
 const GENERATED_DIR = resolve(ROOT, 'src/generated')
 const PUBLIC_ASSETS_DIR = resolve(ROOT, 'public/generated')
 const API = 'https://api.github.com'
-const USER_AGENT = 'godlikeswan-portfolio-refresh'
 const PER_PAGE = 100
 
 /** Fine-grained PAT. Optional for the public endpoints, but raises the limit. */
@@ -119,6 +130,7 @@ interface GitHubRepo {
   topics?: string[]
   language: string | null
   homepage: string | null
+  default_branch: string
   fork: boolean
   archived: boolean
   pushed_at: string | null
@@ -145,15 +157,80 @@ async function fetchRepos(login: string): Promise<GitHubRepo[]> {
   return repos
 }
 
-/** The README body as markdown, or null when the repository has no README. */
-async function fetchReadme(login: string, repo: string): Promise<string | null> {
+/** The README plus the bases its relative references resolve against. */
+interface ReadmeSource {
+  markdown: string
+  /** https://raw.githubusercontent.com/<login>/<repo>/<branch>/<readme dir> */
+  rawBase: string
+  /** the same base in GitHub's blob view, for rewritten doc links */
+  blobBase: string
+}
+
+/** What /repos/<login>/<repo>/readme returns under the JSON media type. */
+interface GitHubReadme {
+  path: string
+  content?: string | null
+  encoding?: string | null
+  download_url?: string | null
+  _links?: { html?: string | null; download?: string | null } | null
+}
+
+/** The directory part of a URL, with its trailing slash, or null. */
+function directoryOf(url: string | null | undefined): string | null {
+  if (!url) return null
+  return url.slice(0, url.lastIndexOf('/') + 1) || null
+}
+
+/** The decoded README body. Files over 1 MB come back without inline content. */
+async function readBody(readme: GitHubReadme, url: string): Promise<string> {
+  if (readme.encoding === 'base64' && readme.content) {
+    return Buffer.from(readme.content, 'base64').toString('utf8')
+  }
+  if (readme.download_url) {
+    // No Authorization header: this host is not api.github.com.
+    const response = await fetch(readme.download_url, { headers: { 'User-Agent': USER_AGENT } })
+    if (!response.ok) {
+      throw new Error(`GET ${readme.download_url} -> ${response.status} ${response.statusText}`)
+    }
+    return response.text()
+  }
+  throw new Error(`GET ${url} -> response carried no README body`)
+}
+
+/**
+ * The README body as markdown, or null when the repository has no README.
+ *
+ * The JSON media type is used rather than the raw body because the response
+ * also carries the README's path: a README in docs/ resolves its relative
+ * images and links from there, exactly like GitHub's own renderer. Its `_links`
+ * hand us the matching raw and blob bases, branch and all.
+ */
+async function fetchReadme(
+  login: string,
+  repo: string,
+  branch: string,
+): Promise<ReadmeSource | null> {
   const url = `${API}/repos/${login}/${repo}/readme`
-  const response = await apiGet(url, 'application/vnd.github.raw+json')
+  const response = await apiGet(url, 'application/vnd.github+json')
   if (response.status === 404) return null
   if (!response.ok) {
     throw new Error(`GET ${url} -> ${response.status} ${response.statusText}`)
   }
-  return response.text()
+
+  const readme = (await response.json()) as GitHubReadme
+  const markdown = await readBody(readme, url)
+
+  // A README in docs/ resolves its relative references from docs/, like GitHub.
+  const cut = readme.path.lastIndexOf('/')
+  const dir = cut === -1 ? '' : readme.path.slice(0, cut + 1)
+  const rawBase = directoryOf(readme._links?.download)
+  const blobBase = directoryOf(readme._links?.html)
+
+  return {
+    markdown,
+    rawBase: rawBase ?? `https://raw.githubusercontent.com/${login}/${repo}/${branch}/${dir}`,
+    blobBase: blobBase ?? `https://github.com/${login}/${repo}/blob/${branch}/${dir}`,
+  }
 }
 
 /**
@@ -164,13 +241,6 @@ async function fetchReadme(login: string, repo: string): Promise<string | null> 
 function stripFrontmatter(markdown: string): string {
   const match = /^---\r?\n[\s\S]*?\r?\n---\r?\n?/.exec(markdown)
   return match ? markdown.slice(match[0].length) : markdown
-}
-
-const EXT_BY_CONTENT_TYPE: Record<string, string> = {
-  'image/png': 'png',
-  'image/jpeg': 'jpg',
-  'image/webp': 'webp',
-  'image/gif': 'gif',
 }
 
 /**
@@ -248,6 +318,9 @@ async function main(): Promise<void> {
   log(`found ${repos.length} public repositories`)
 
   const projects: Project[] = []
+  /** Per repository: where its README's images and links were moved to. */
+  const assets: Record<string, RepoAssets> = {}
+
   for (const repo of repos) {
     if (repo.fork) {
       log(`skip ${repo.name} (fork)`)
@@ -262,18 +335,32 @@ async function main(): Promise<void> {
       continue
     }
 
-    const readme = await fetchReadme(login, repo.name)
+    const readme = await fetchReadme(login, repo.name, repo.default_branch)
     if (readme === null) {
       log(`skip ${repo.name} (no README)`)
       continue
     }
 
-    const body = stripFrontmatter(readme)
+    const body = stripFrontmatter(readme.markdown)
     projects.push(toProject(repo, body))
     log(`+ ${repo.name} (${body.length} chars)`)
+
+    // Store what the README references and hand back the rewrites the render
+    // step applies. Reads the stored body, not the pre-frontmatter text.
+    const localized = await localizeReadmeAssets(body, {
+      rawBase: readme.rawBase,
+      blobBase: readme.blobBase,
+      outDir: resolve(PUBLIC_ASSETS_DIR, repo.name),
+      urlPrefix: `/generated/${repo.name}`,
+      log,
+    })
+    if (Object.keys(localized.rewrites).length > 0 || localized.skipped.length > 0) {
+      assets[repo.name] = localized
+    }
   }
 
   await writeJson('projects.json', projects)
+  await writeJson('assets.json', assets)
 
   // Temporary: until groups come from the profile repo's groups/<id>.md files,
   // every project shares one bucket so the sidebar and group page have an entry.
@@ -286,7 +373,11 @@ async function main(): Promise<void> {
   }
   await writeJson('groups.json', [ungrouped])
 
-  log(`wrote ${projects.length} projects and 1 group`)
+  const references = Object.values(assets).reduce(
+    (total, repo) => total + Object.keys(repo.rewrites).length,
+    0,
+  )
+  log(`wrote ${projects.length} projects, 1 group, ${references} localized reference(s)`)
 }
 
 main().catch((error: unknown) => {

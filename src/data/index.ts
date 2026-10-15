@@ -9,6 +9,11 @@
  * `import.meta.glob` (rather than a static import of a possibly-missing file)
  * is what makes the fallback work in both dev and build: it yields `{}` when
  * nothing matches instead of failing to resolve.
+ *
+ * assets.json is deliberately NOT globbed: it maps the URLs a README used to
+ * the copies stored under public/generated/, and that mapping is already baked
+ * into rendered.json (and into the files themselves) by the time the app runs.
+ * The browser never needs it.
  */
 
 import type { Group, Profile, Project, RenderedReadme } from './types'

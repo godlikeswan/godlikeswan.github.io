@@ -3,17 +3,18 @@
  * render-markdown.mjs - offline: README markdown -> sanitized HTML.
  *
  * Deliberately separate from refresh-projects.ts and touched only by LOCAL
- * data: it opens src/generated/projects.json, renders each stored markdown body
- * through the unified pipeline, and writes src/generated/rendered.json. No
- * network, no token. That split means a styling or plugin tweak never needs to
- * re-hit the GitHub API -- just `npm run render` again.
+ * data: it opens src/generated/projects.json (and assets.json, the map of
+ * resources refresh stored locally), renders each stored markdown body through
+ * the unified pipeline, and writes src/generated/rendered.json. No network, no
+ * token. That split means a styling or plugin tweak never needs to re-hit the
+ * GitHub API -- just `npm run render` again.
  *
  * Pipeline (plan section 7):
  *   remark-parse -> remark-gfm -> remark-github-blockquote-alert
  *   -> remark-rehype { allowDangerousHtml } -> rehype-raw
- *   -> rehype-sanitize (extended GitHub schema) -> rehype-slug
- *   -> collect headings -> rehype-autolink-headings -> @shikijs/rehype
- *   -> rehype-stringify
+ *   -> localize references -> rehype-sanitize (extended GitHub schema)
+ *   -> rehype-slug -> collect headings -> rehype-autolink-headings
+ *   -> @shikijs/rehype -> rehype-stringify
  *
  * Notes:
  *   - HTML is ALLOWED and sanitized, not stripped: real READMEs use
@@ -21,6 +22,9 @@
  *     then the schema keeps only the safe subset.
  *   - Shiki runs AFTER the sanitizer on purpose: the schema drops `class` and
  *     `style`, and Shiki's highlighting is inline styles added afterwards.
+ *   - References are localized on the parsed tree, never by rewriting the
+ *     markdown text: the stored body stays byte-identical to GitHub's, and a
+ *     URL inside a code fence is never touched.
  *   - The output is an HTML string plus the heading list (for the TOC), so the
  *     browser ships no markdown parser.
  *
@@ -46,6 +50,7 @@ import { unified } from 'unified'
 
 const ROOT = resolve(import.meta.dirname, '..')
 const INPUT = resolve(ROOT, 'src/generated/projects.json')
+const ASSETS = resolve(ROOT, 'src/generated/assets.json')
 const OUTPUT = resolve(ROOT, 'src/generated/rendered.json')
 
 /** Light UI, so a single light theme -- no dark variant switching. */
@@ -132,6 +137,31 @@ const schema = {
   attributes,
 }
 
+/**
+ * Point local references at the copies `npm run refresh` downloaded (plan
+ * sections 7 and 8): a relative image becomes /generated/<repo>/<hash>.<ext>,
+ * and a relative doc link becomes its GitHub blob URL. The map is keyed by the
+ * URL exactly as written in the stored markdown, and it is applied here, to the
+ * parsed tree -- so the markdown text itself is never rewritten.
+ */
+function rehypeLocalizeReferences(rewrites) {
+  return (tree) => {
+    const walk = (node) => {
+      if (node.type === 'element') {
+        const { src, href } = node.properties ?? {}
+        if (typeof src === 'string' && Object.hasOwn(rewrites, src)) {
+          node.properties.src = rewrites[src]
+        }
+        if (typeof href === 'string' && Object.hasOwn(rewrites, href)) {
+          node.properties.href = rewrites[href]
+        }
+      }
+      if (Array.isArray(node.children)) node.children.forEach(walk)
+    }
+    walk(tree)
+  }
+}
+
 /** The heading text of a node, flattened (used for the TOC). */
 function textOf(node) {
   if (node.type === 'text') return node.value
@@ -157,7 +187,7 @@ function rehypeCollectHeadings(headings) {
 }
 
 /** README markdown -> { html, headings }. */
-async function renderMarkdown(markdown) {
+async function renderMarkdown(markdown, rewrites) {
   const headings = []
   const file = await unified()
     .use(remarkParse)
@@ -165,6 +195,7 @@ async function renderMarkdown(markdown) {
     .use(remarkAlert)
     .use(remarkRehype, { allowDangerousHtml: true })
     .use(rehypeRaw)
+    .use(rehypeLocalizeReferences, rewrites)
     .use(rehypeSanitize, schema)
     .use(rehypeSlug)
     .use(rehypeCollectHeadings, headings)
@@ -183,12 +214,17 @@ async function main() {
   }
 
   const projects = JSON.parse(await readFile(INPUT, 'utf8'))
+  // Which README resources refresh stored locally; absent until the first run.
+  const assets = existsSync(ASSETS) ? JSON.parse(await readFile(ASSETS, 'utf8')) : {}
   const rendered = {}
   let count = 0
+  let localized = 0
 
   for (const project of projects) {
     if (typeof project.readme !== 'string' || project.readme.trim() === '') continue
-    const result = await renderMarkdown(project.readme)
+    const rewrites = assets[project.repo]?.rewrites ?? {}
+    localized += Object.keys(rewrites).length
+    const result = await renderMarkdown(project.readme, rewrites)
     rendered[project.repo] = result
     count += 1
     log(`${project.repo} (${result.headings.length} headings)`)
@@ -196,6 +232,7 @@ async function main() {
 
   await writeFile(OUTPUT, `${JSON.stringify(rendered, null, 2)}\n`)
   log(`wrote ${count} rendered READMEs to src/generated/rendered.json`)
+  log(`localized ${localized} README reference(s)`)
 }
 
 main().catch((error) => {
