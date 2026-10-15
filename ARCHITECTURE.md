@@ -293,9 +293,11 @@ nothing is stored per visitor and no switching logic ships to the browser:
   same media query, beside their light values.
 - Shiki is the one part that cannot be a CSS override, because the highlighting
   is baked into the HTML. `render-markdown.ts` therefore highlights **both**
-  themes at build time and Shiki emits each token as `--shiki-light` /
-  `--shiki-dark` CSS variables; the stylesheet picks one under the media query.
-  Still no runtime work, and no second pass at the API.
+  themes at build time. Shiki inlines the light token as the base
+  `color`/`background-color` on each span and adds the dark one as
+  `--shiki-dark` / `--shiki-dark-bg`, so the stylesheet only has to swap those
+  variables under the media query. Still no runtime work, and no second pass at
+  the API.
 - `index.html` sets `color-scheme` (and a `theme-color` per scheme) so the
   browser paints scrollbars, form controls, and the canvas to match before the
   stylesheet lands — a dark desktop never flashes white.

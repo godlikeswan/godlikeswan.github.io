@@ -60,8 +60,9 @@ const ASSETS = resolve(ROOT, 'src/generated/assets.json')
 const OUTPUT = resolve(ROOT, 'src/generated/rendered.json')
 
 /**
- * Both schemes at once: Shiki writes each token as a pair of CSS variables
- * (`--shiki-light` / `--shiki-dark`), and index.css picks one under
+ * Both schemes at once: Shiki highlights each token for both themes, inlining
+ * the light color as the base `color`/`background-color` and adding the dark one
+ * as `--shiki-dark` / `--shiki-dark-bg`, which index.css swaps to under
  * `prefers-color-scheme`. Highlighting twice at build time keeps any theme
  * switching out of the browser entirely. `github-light`/`github-dark` are the
  * matched pair, like the rest of the README palette.
