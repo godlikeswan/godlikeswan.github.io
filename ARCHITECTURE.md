@@ -143,7 +143,9 @@ Authenticates with a fine-grained token (public repositories, read-only; stored
 as a CI secret, never in the browser), then:
 
 0. **[done]** resolve the account name (never hardcoded) and read the profile
-   (`GET /users/<login>`), writing `profile.json` and downloading the avatar
+   (`GET /users/<login>`), writing `profile.json` and downloading the avatar,
+   plus a circular crop of it (`avatar-<hash>-circle.png`, via sharp) for the
+   tab icon
 1. **[done]** read the list of repositories (paginated, 100 per page)
 2. **[done]** drop forks, archived repositories, and repositories without a
    README; also skip the `<login>/<login>` profile repository
@@ -301,6 +303,18 @@ nothing is stored per visitor and no switching logic ships to the browser:
 - `index.html` sets `color-scheme` (and a `theme-color` per scheme) so the
   browser paints scrollbars, form controls, and the canvas to match before the
   stylesheet lands — a dark desktop never flashes white.
+- The tab title and icon are data-driven as well: `main.tsx` calls
+  `applyProfileMeta(profile)` before rendering, which sets `document.title` to
+  `<name> | Portfolio` and points the favicon and apple-touch-icon at the
+  avatar. It has to be runtime rather than static tags in `index.html`, because
+  the avatar URL only exists after bundling — a content-hashed
+  `/generated/avatar-<hash>.<ext>` for real data, or a Vite asset URL for the
+  mock. The favicon is the avatar pre-cropped to a circle (`profile.favicon`):
+  `refresh-projects.ts` produces it with sharp, and the mock's is a checked-in
+  fixture. The apple-touch-icon stays full-bleed because iOS applies its own
+  mask. Reading both from the same `profile` the UI renders keeps the tab
+  correct in either case; `public/favicon.svg` is a neutral, circular
+  placeholder for the instant before that runs.
 
 Group accent colors are authored for a light page, so the accent elements get
 `dark:brightness-125` to keep mid-tone colors legible on the dark background; a

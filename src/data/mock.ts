@@ -7,6 +7,9 @@
  */
 
 import mockAvatar from '../assets/mock-avatar.png'
+// The circle is generated from mock-avatar.png by scripts/mock-avatar.ts
+// (`npm run mock-avatar`); regenerate it after changing the source image.
+import mockAvatarCircle from '../assets/mock-avatar-circle.png'
 import type { Group, Profile, Project } from './types'
 
 export const profile: Profile = {
@@ -14,6 +17,7 @@ export const profile: Profile = {
   login: 'user',
   bio: 'I build small, self-contained tools and games: tiny puzzle solvers, audio toys, and language experiments. Mostly client-side, and mostly over-engineered in a good way.',
   avatar: mockAvatar,
+  favicon: mockAvatarCircle,
   location: 'Somewhere on the internet',
   blog: 'https://example.com/',
 }

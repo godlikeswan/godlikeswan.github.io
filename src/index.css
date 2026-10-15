@@ -1,6 +1,13 @@
 @import "tailwindcss";
 @plugin "@tailwindcss/typography";
 
+/* public/ holds files that are served verbatim (the placeholder favicon, the
+   downloaded README images). They are not class sources, and Tailwind's
+   auto-detection would otherwise mine utility-looking strings out of them -- a
+   plain SVG favicon's transform/filter attributes once emitted dead
+   `transform`/`filter` rules into the bundle. */
+@source not "../public";
+
 /* ---------------------------------------------------------------------------
    Color scheme
 

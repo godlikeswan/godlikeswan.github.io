@@ -7,6 +7,7 @@
  *
  *   GET /users/<login>                     -> src/generated/profile.json
  *                                          -> public/generated/avatar-<hash>.<ext>
+ *                                          -> public/generated/avatar-<hash>-circle.png
  *   GET /users/<login>/repos (paginated)   -> the repository list
  *   GET /repos/<login>/<repo>/readme       -> each README body
  *   README images on GitHub's asset hosts  -> public/generated/<repo>/<hash>.<ext>
@@ -35,6 +36,7 @@ import { createHash } from 'node:crypto'
 import { mkdir, rm, writeFile } from 'node:fs/promises'
 import { resolve } from 'node:path'
 import type { Group, Profile, Project } from '../src/data/types.ts'
+import { circleAvatar } from './avatar.ts'
 import {
   EXT_BY_CONTENT_TYPE,
   USER_AGENT,
@@ -243,13 +245,23 @@ function stripFrontmatter(markdown: string): string {
   return match ? markdown.slice(match[0].length) : markdown
 }
 
+/** The two avatar files written by downloadAvatar, as root-relative URLs. */
+interface AvatarAssets {
+  /** the downloaded square avatar, used for the sidebar and apple-touch-icon */
+  avatar: string
+  /** the avatar cropped to a circle, used as the tab icon */
+  favicon: string
+}
+
 /**
  * Download the avatar next to the other generated assets and return its
- * root-relative URL. Downloaded, never hotlinked: raw/avatars URLs are rate
- * limited per VISITOR ip, so real users would see broken images under load.
- * The content hash in the filename keeps browsers from serving a stale avatar.
+ * root-relative URL, along with a circular variant for the tab icon.
+ *
+ * Downloaded, never hotlinked: raw/avatars URLs are rate limited per VISITOR
+ * ip, so real users would see broken images under load. The content hash in the
+ * filename keeps browsers from serving a stale avatar.
  */
-async function downloadAvatar(url: string): Promise<string> {
+async function downloadAvatar(url: string): Promise<AvatarAssets> {
   const sized = new URL(url)
   sized.searchParams.set('s', '256')
 
@@ -264,9 +276,11 @@ async function downloadAvatar(url: string): Promise<string> {
   const contentType = response.headers.get('content-type')?.split(';')[0].trim() ?? ''
   const ext = EXT_BY_CONTENT_TYPE[contentType] ?? 'png'
   const name = `avatar-${hash}.${ext}`
+  const faviconName = `avatar-${hash}-circle.png`
 
   await writeFile(resolve(PUBLIC_ASSETS_DIR, name), bytes)
-  return `/generated/${name}`
+  await writeFile(resolve(PUBLIC_ASSETS_DIR, faviconName), await circleAvatar(bytes))
+  return { avatar: `/generated/${name}`, favicon: `/generated/${faviconName}` }
 }
 
 function toProject(repo: GitHubRepo, readme: string): Project {
@@ -301,18 +315,19 @@ async function main(): Promise<void> {
   await mkdir(PUBLIC_ASSETS_DIR, { recursive: true })
 
   const user = await fetchProfile(login)
-  const avatar = await downloadAvatar(user.avatar_url)
+  const { avatar, favicon } = await downloadAvatar(user.avatar_url)
 
   const profile: Profile = {
     login: user.login,
     name: user.name ?? user.login,
     bio: user.bio ?? '',
     avatar,
+    favicon,
     location: user.location ?? undefined,
     blog: user.blog?.trim() || undefined,
   }
   await writeJson('profile.json', profile)
-  log(`profile: ${profile.name} (${avatar})`)
+  log(`profile: ${profile.name} (${avatar}, ${favicon})`)
 
   const repos = await fetchRepos(login)
   log(`found ${repos.length} public repositories`)

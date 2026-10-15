@@ -16,6 +16,8 @@ export interface Profile {
   bio: string
   /** root-relative path to the downloaded avatar, e.g. /generated/avatar-1a2b3c4d.png */
   avatar?: string
+  /** root-relative path to the avatar cropped to a circle, used as the tab icon */
+  favicon?: string
   location?: string
   blog?: string
 }

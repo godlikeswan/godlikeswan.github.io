@@ -39,6 +39,8 @@ The UI follows the OS color scheme — light and dark, no toggle.
       anchors, Shiki highlighting), plus a heading list for the TOC
 - [x] Light and dark theme following the OS setting (Tailwind `dark:`, GitHub's
       own dark palette inside rendered READMEs, Shiki highlighted for both)
+- [x] Tab title (`<name> | Portfolio`) and the profile avatar as the tab icon,
+      both taken from the profile (the icon is a circle, cropped at build time)
 - [ ] `scripts/refresh-projects.ts` — read the real groups from the profile repo
 - [ ] Demo links / embedding for client-only projects
 
@@ -53,6 +55,7 @@ npm run preview  # serve the built output locally
 npm run refresh  # fetch GitHub data + README images, then render (optional)
 npm run render   # (re)render READMEs only — offline, no API calls
 npm run clean    # remove dist/ and generated data (next build falls back to mocks)
+npm run mock-avatar  # regenerate the mock's circular favicon from mock-avatar.png
 ```
 
 `npm run refresh` is optional — without it, the app falls back to the mocks in
@@ -66,19 +69,21 @@ downloads images to `public/generated/`; both are gitignored.
 .github/workflows/  deploy.yml — build + deploy to GitHub Pages
 scripts/        refresh-projects.ts — fetch GitHub data into src/generated/
                 readme-assets.ts — store README images + rewrite relative links
+                avatar.ts — crop an avatar to a circle (sharp), for the favicon
+                mock-avatar.ts — regenerate the mock's circular favicon
                 render-markdown.ts — README markdown -> sanitized HTML (offline)
                 clean.ts — remove dist/ and generated data
 src/
   data/         types.ts (shared shapes), mock.ts (dev fallback), index.ts (the seam)
-  assets/       mock-avatar.png — the fallback profile picture for mock data
+  assets/       mock-avatar.png and mock-avatar-circle.png — fallback profile pictures
   layouts/      RootLayout — persistent sidebar + main content
   components/   Sidebar, Avatar, RepoCard, ProjectActions, GroupIcon, RenderedMarkdown
   pages/        HomePage, GroupPage, RepoDetailPage, NotFoundPage
-  lib/          cn() class helper
+  lib/          cn() class helper, documentMeta.ts (tab title + icon from the profile)
   router.tsx    route definitions
   generated/    (gitignored) JSON produced by `npm run refresh` / `npm run render`
 public/
-  generated/    (gitignored) downloaded images: the avatar and README assets
+  generated/    (gitignored) downloaded images: the avatar (square + circle) and README assets
 vite.config.ts  Tailwind plugin + the index.html -> 404.html SPA fallback
 ```
 
