@@ -58,7 +58,7 @@ export interface Heading {
 }
 
 /**
- * A README precompiled to sanitized HTML by scripts/render-markdown.mjs
+ * A README precompiled to sanitized HTML by scripts/render-markdown.ts
  * (src/generated/rendered.json), keyed by repo name.
  */
 export interface RenderedReadme {

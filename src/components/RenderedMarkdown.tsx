@@ -1,7 +1,7 @@
 import type { RenderedReadme } from '../data'
 
 /**
- * Renders a README that scripts/render-markdown.mjs precompiled to HTML.
+ * Renders a README that scripts/render-markdown.ts precompiled to HTML.
  *
  * The HTML is sanitized at build time (rehype-sanitize), so injecting the string
  * here is safe and the browser never ships a markdown parser. Styling comes from

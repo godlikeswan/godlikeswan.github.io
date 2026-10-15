@@ -8,8 +8,8 @@
     "build": "tsc -b && vite build",
     "lint": "oxlint",
     "preview": "vite preview",
-    "refresh": "node --env-file-if-exists=.env --env-file-if-exists=.env.local scripts/refresh-projects.ts && node scripts/render-markdown.mjs",
-    "render": "node scripts/render-markdown.mjs",
+    "refresh": "node --env-file-if-exists=.env --env-file-if-exists=.env.local scripts/refresh-projects.ts && node scripts/render-markdown.ts",
+    "render": "node scripts/render-markdown.ts",
     "clean": "node scripts/clean.ts"
   },
   "dependencies": {

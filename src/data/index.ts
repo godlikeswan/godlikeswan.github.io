@@ -53,7 +53,7 @@ export const groups: Group[] =
 export const projects: Project[] =
   (generated['../generated/projects.json'] as Project[] | undefined) ?? mockProjects
 
-/** Sanitized README HTML by repo, from scripts/render-markdown.mjs. */
+/** Sanitized README HTML by repo, from scripts/render-markdown.ts. */
 export const readmes: Record<string, RenderedReadme> =
   (generated['../generated/rendered.json'] as Record<string, RenderedReadme> | undefined) ?? {}
 

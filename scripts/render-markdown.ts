@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * render-markdown.mjs - offline: README markdown -> sanitized HTML.
+ * render-markdown.ts - offline: README markdown -> sanitized HTML.
  *
  * Deliberately separate from refresh-projects.ts and touched only by LOCAL
  * data: it opens src/generated/projects.json (and assets.json, the map of
@@ -28,6 +28,9 @@
  *   - The output is an HTML string plus the heading list (for the TOC), so the
  *     browser ships no markdown parser.
  *
+ * Runs directly under Node (>= 23.6 strips types with no flag) like
+ * refresh-projects.ts, and imports only TYPES from src/.
+ *
  * If src/generated/projects.json is missing (no `npm run refresh` yet, or after
  * `npm run clean`) this is a no-op: the app falls back to mock/plain text.
  */
@@ -48,6 +51,9 @@ import rehypeShiki from '@shikijs/rehype'
 import rehypeStringify from 'rehype-stringify'
 import { unified } from 'unified'
 
+import type { Heading, Project, RenderedReadme } from '../src/data/types.ts'
+import type { RepoAssets } from './readme-assets.ts'
+
 const ROOT = resolve(import.meta.dirname, '..')
 const INPUT = resolve(ROOT, 'src/generated/projects.json')
 const ASSETS = resolve(ROOT, 'src/generated/assets.json')
@@ -60,16 +66,17 @@ const OUTPUT = resolve(ROOT, 'src/generated/rendered.json')
  * switching out of the browser entirely. `github-light`/`github-dark` are the
  * matched pair, like the rest of the README palette.
  */
-const SHIKI_THEMES = { light: 'github-light', dark: 'github-dark' }
+const SHIKI_THEMES: Record<string, string> = { light: 'github-light', dark: 'github-dark' }
 
 /**
  * Language-less fenced blocks (``` with no info string) would otherwise skip
- * Shiki and fall back to the typography plugin's dark `pre`, clashing with the
- * highlighted blocks. `text` gives them the same light treatment.
+ * Shiki and fall back to the typography plugin's own `pre` styling, clashing
+ * with the highlighted blocks. `text` gives them the same treatment in both
+ * schemes.
  */
 const SHIKI_DEFAULT_LANGUAGE = 'text'
 
-function log(message) {
+function log(message: string): void {
   console.log(`[render] ${message}`)
 }
 
@@ -118,7 +125,8 @@ const CLASS_TAGS = [
   'hgroup',
 ]
 
-const attributes = { ...defaultSchema.attributes }
+type AttributeList = NonNullable<typeof defaultSchema.attributes>[string]
+const attributes: Record<string, AttributeList> = { ...defaultSchema.attributes }
 for (const tag of CLASS_TAGS) {
   attributes[tag] = [...(attributes[tag] ?? []), 'className']
 }
@@ -143,6 +151,15 @@ const schema = {
   attributes,
 }
 
+/** The subset of hast we walk (the same shape readme-assets.ts uses for mdast). */
+interface TreeNode {
+  type: string
+  tagName?: string
+  properties?: Record<string, unknown>
+  value?: string
+  children?: TreeNode[]
+}
+
 /**
  * Point local references at the copies `npm run refresh` downloaded (plan
  * sections 7 and 8): a relative image becomes /generated/<repo>/<hash>.<ext>,
@@ -150,11 +167,11 @@ const schema = {
  * URL exactly as written in the stored markdown, and it is applied here, to the
  * parsed tree -- so the markdown text itself is never rewritten.
  */
-function rehypeLocalizeReferences(rewrites) {
-  return (tree) => {
-    const walk = (node) => {
-      if (node.type === 'element') {
-        const { src, href } = node.properties ?? {}
+function rehypeLocalizeReferences(rewrites: Record<string, string>) {
+  return (tree: TreeNode): void => {
+    const walk = (node: TreeNode): void => {
+      if (node.type === 'element' && node.properties) {
+        const { src, href } = node.properties
         if (typeof src === 'string' && Object.hasOwn(rewrites, src)) {
           node.properties.src = rewrites[src]
         }
@@ -169,20 +186,22 @@ function rehypeLocalizeReferences(rewrites) {
 }
 
 /** The heading text of a node, flattened (used for the TOC). */
-function textOf(node) {
-  if (node.type === 'text') return node.value
+function textOf(node: TreeNode): string {
+  if (node.type === 'text') return node.value ?? ''
   if (Array.isArray(node.children)) return node.children.map(textOf).join('')
   return ''
 }
 
 /** Collect h1-h6 (after rehype-slug, so ids exist; before autolink, so no dupes). */
-function rehypeCollectHeadings(headings) {
-  return (tree) => {
-    const walk = (node) => {
-      if (node.type === 'element' && /^h[1-6]$/.test(node.tagName)) {
+function rehypeCollectHeadings(headings: Heading[]) {
+  return (tree: TreeNode): void => {
+    const walk = (node: TreeNode): void => {
+      const tagName = node.tagName ?? ''
+      if (node.type === 'element' && /^h[1-6]$/.test(tagName)) {
+        const props = node.properties ?? {}
         headings.push({
-          depth: Number(node.tagName.slice(1)),
-          id: typeof node.properties?.id === 'string' ? node.properties.id : '',
+          depth: Number(tagName.slice(1)),
+          id: typeof props.id === 'string' ? props.id : '',
           text: textOf(node),
         })
       }
@@ -193,8 +212,11 @@ function rehypeCollectHeadings(headings) {
 }
 
 /** README markdown -> { html, headings }. */
-async function renderMarkdown(markdown, rewrites) {
-  const headings = []
+async function renderMarkdown(
+  markdown: string,
+  rewrites: Record<string, string>,
+): Promise<RenderedReadme> {
+  const headings: Heading[] = []
   const file = await unified()
     .use(remarkParse)
     .use(remarkGfm)
@@ -213,16 +235,18 @@ async function renderMarkdown(markdown, rewrites) {
   return { html: String(file), headings }
 }
 
-async function main() {
+async function main(): Promise<void> {
   if (!existsSync(INPUT)) {
     log('no src/generated/projects.json -- nothing to render (run `npm run refresh`)')
     return
   }
 
-  const projects = JSON.parse(await readFile(INPUT, 'utf8'))
+  const projects: Project[] = JSON.parse(await readFile(INPUT, 'utf8'))
   // Which README resources refresh stored locally; absent until the first run.
-  const assets = existsSync(ASSETS) ? JSON.parse(await readFile(ASSETS, 'utf8')) : {}
-  const rendered = {}
+  const assets: Record<string, RepoAssets> = existsSync(ASSETS)
+    ? JSON.parse(await readFile(ASSETS, 'utf8'))
+    : {}
+  const rendered: Record<string, RenderedReadme> = {}
   let count = 0
   let localized = 0
 

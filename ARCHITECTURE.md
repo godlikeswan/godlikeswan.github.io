@@ -7,7 +7,7 @@ lives**, how it is fetched, and how it is built.
 > the shell is live. The data pipeline is **in progress**:
 > `scripts/refresh-projects.ts` fetches the profile, the repository list, and
 > each README into `src/generated/`, stores the resources those READMEs
-> reference (`scripts/readme-assets.ts`), and `scripts/render-markdown.mjs`
+> reference (`scripts/readme-assets.ts`), and `scripts/render-markdown.ts`
 > precompiles them to sanitized HTML. Groups are not read yet, so every project
 > sits in one temporary "ungrouped" group.
 
@@ -101,7 +101,7 @@ refresh (network)  ->  render (offline)  ->  build
   `assets.json`, and downloads the avatar and every README image into
   `public/generated/`. Groups currently come from a single placeholder
   "ungrouped" entry.
-- **render** — `scripts/render-markdown.mjs` turns the stored markdown into
+- **render** — `scripts/render-markdown.ts` turns the stored markdown into
   sanitized HTML, plus a heading list for the table of contents, and writes
   `rendered.json`. On the way it applies the rewrites recorded in `assets.json`,
   so the HTML points at the downloaded copies. It is offline and separate from
@@ -203,7 +203,7 @@ GitHub's per-visitor quota, and raw file URLs accept no auth, so visitors would
 see broken images under load.
 
 The map is keyed by the reference **exactly as written**, and
-`scripts/render-markdown.mjs` applies it to the parsed HTML tree rather than to
+`scripts/render-markdown.ts` applies it to the parsed HTML tree rather than to
 the markdown text. That keeps the stored body byte-identical to GitHub's, so the
 raw source stays traceable and rewrites never leak into prose.
 
@@ -215,7 +215,7 @@ of a token and a workflow file in every repo.
 
 ## README rendering
 
-`scripts/render-markdown.mjs` precompiles each README to sanitized HTML at build
+`scripts/render-markdown.ts` precompiles each README to sanitized HTML at build
 time. It is **offline**: it reads the markdown out of `projects.json` and writes
 `rendered.json`, so a styling or plugin tweak never re-hits the API. The browser
 ships an HTML string, never a markdown parser; the repo detail page injects it
@@ -292,7 +292,7 @@ nothing is stored per visitor and no switching logic ships to the browser:
   still looks like it does on github.com. Those rules are plain CSS under the
   same media query, beside their light values.
 - Shiki is the one part that cannot be a CSS override, because the highlighting
-  is baked into the HTML. `render-markdown.mjs` therefore highlights **both**
+  is baked into the HTML. `render-markdown.ts` therefore highlights **both**
   themes at build time and Shiki emits each token as `--shiki-light` /
   `--shiki-dark` CSS variables; the stylesheet picks one under the media query.
   Still no runtime work, and no second pass at the API.

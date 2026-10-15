@@ -34,7 +34,7 @@ The UI follows the OS color scheme — light and dark, no toggle.
 - [x] `scripts/readme-assets.ts` — store what each README references: download its
       images into `public/generated/<repo>/` and rewrite relative doc links, then
       record the map in `assets.json`
-- [x] `scripts/render-markdown.mjs` — README markdown -> sanitized HTML with the
+- [x] `scripts/render-markdown.ts` — README markdown -> sanitized HTML with the
       unified pipeline (GFM tables/task lists, alert callouts, heading ids and
       anchors, Shiki highlighting), plus a heading list for the TOC
 - [x] Light and dark theme following the OS setting (Tailwind `dark:`, GitHub's
@@ -66,7 +66,7 @@ downloads images to `public/generated/`; both are gitignored.
 .github/workflows/  deploy.yml — build + deploy to GitHub Pages
 scripts/        refresh-projects.ts — fetch GitHub data into src/generated/
                 readme-assets.ts — store README images + rewrite relative links
-                render-markdown.mjs — README markdown -> sanitized HTML (offline)
+                render-markdown.ts — README markdown -> sanitized HTML (offline)
                 clean.ts — remove dist/ and generated data
 src/
   data/         types.ts (shared shapes), mock.ts (dev fallback), index.ts (the seam)

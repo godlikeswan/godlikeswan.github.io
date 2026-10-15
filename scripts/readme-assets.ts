@@ -22,7 +22,7 @@
  * stays auditable.
  *
  * The returned map is keyed by the URL EXACTLY as written in the markdown, and
- * render-markdown.mjs applies it to the parsed tree. Rewriting the HTML rather
+ * render-markdown.ts applies it to the parsed tree. Rewriting the HTML rather
  * than the markdown keeps the stored body byte-identical to GitHub's: the raw
  * source stays traceable, and a URL inside a code fence is never touched.
  */
@@ -244,7 +244,7 @@ async function downloadAsset(
 /**
  * Localize every resource one README references, downloading what can be
  * downloaded and reporting what cannot. Files land in `outDir`; the returned
- * map is what render-markdown.mjs applies to the HTML.
+ * map is what render-markdown.ts applies to the HTML.
  */
 export async function localizeReadmeAssets(
   markdown: string,
